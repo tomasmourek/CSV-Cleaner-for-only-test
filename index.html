@@ -20,6 +20,7 @@
 </head>
 <body>
   <h1>CSV Cleaner</h1>
+
   <div class="card">
     <div class="row">
       <input id="file" type="file" accept=".csv,text/csv" multiple />
@@ -41,50 +42,104 @@
     <div id="msg" class="ok"></div>
   </div>
 
-<script>
-const fileEl = document.getElementById("file");
-const runBtn = document.getElementById("run");
-const msg = document.getElementById("msg");
+  <script>
+    const fileEl = document.getElementById("file");
+    const runBtn = document.getElementById("run");
+    const msg = document.getElementById("msg");
 
-fileEl.addEventListener("change", () => {
-  runBtn.disabled = !fileEl.files || !fileEl.files.length;
-  msg.textContent = "";
-});
+    fileEl.addEventListener("change", () => {
+      runBtn.disabled = !(fileEl.files && fileEl.files.length);
+      msg.textContent = "";
+    });
 
-runBtn.addEventListener("click", async () => {
-  const file = fileEl.files[0];
-  const headN = Math.max(0, parseInt(document.getElementById("head").value || "0", 10));
-  const marker = (document.getElementById("marker").value || "").trim();
+    function detectDelimiter(line) {
+      const sc = (line.match(/;/g) || []).length;
+      const cm = (line.match(/,/g) || []).length;
+      return sc >= cm ? ";" : ",";
+    }
 
-  const text = await file.text();
-  let lines = text.split(/\r?\n/);
+    function normalizeLines(text) {
+      return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+    }
 
-  // pryč řádky 1–N
-  lines = lines.slice(headN);
+    function cleanOneCsv(text, removeTopN, markerText) {
+      let lines = normalizeLines(text);
 
-  // uřízni od markeru dolů
-  if (marker) {
-    const cutAt = lines.findIndex(l => l.includes(marker));
-    if (cutAt !== -1) lines = lines.slice(0, cutAt);
-  }
+      lines = lines.slice(Math.max(0, removeTopN));
 
-  // odstraň prázdné konce
-  while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+      if (markerText) {
+        const cutAt = lines.findIndex(l => l.includes(markerText));
+        if (cutAt !== -1) lines = lines.slice(0, cutAt);
+      }
 
-  const cleaned = lines.join("\n") + "\n";
-  const blob = new Blob([cleaned], { type: "text/csv;charset=utf-8" });
+      while (lines.length && lines[lines.length - 1].trim() === "") {
+        lines.pop();
+      }
 
-  const outName = file.name.replace(/\.csv$/i, "") + "_clean.csv";
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = outName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(a.href);
+      return lines;
+    }
 
-  msg.innerHTML = `Hotovo: <code>${outName}</code> (staženo).`;
-});
-</script>
+    function renumberFirstColumn(lines, delimiter) {
+      if (lines.length <= 1) return lines;
+
+      const header = lines[0];
+      const body = lines.slice(1).filter(l => l.trim() !== "");
+
+      const renumbered = body.map((line, i) => {
+        const cells = line.split(delimiter);
+        cells[0] = String(i + 1);
+        return cells.join(delimiter);
+      });
+
+      return [header, ...renumbered];
+    }
+
+    runBtn.addEventListener("click", async () => {
+      const files = Array.from(fileEl.files || []);
+      if (!files.length) return;
+
+      const headN = Math.max(0, parseInt(document.getElementById("head").value || "0", 10));
+      const marker = (document.getElementById("marker").value || "").trim();
+
+      const contents = await Promise.all(files.map(f => f.text()));
+      const cleanedParts = contents.map(txt => cleanOneCsv(txt, headN, marker));
+
+      const firstNonEmpty = cleanedParts.find(p => p && p.length);
+      if (!firstNonEmpty || firstNonEmpty.length === 0) {
+        msg.textContent = "Nic ke zpracování.";
+        return;
+      }
+
+      const delimiter = detectDelimiter(firstNonEmpty[0]);
+
+      const merged = [];
+      let headerKept = false;
+
+      for (const part of cleanedParts) {
+        if (!part || part.length === 0) continue;
+
+        if (!headerKept) {
+          merged.push(...part);
+          headerKept = true;
+        } else {
+          merged.push(...part.slice(1));
+        }
+      }
+
+      const finalLines = renumberFirstColumn(merged, delimiter);
+      const result = finalLines.join("\n") + "\n";
+
+      const blob = new Blob([result], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = files.length === 1 ? "clean.csv" : "merged_clean.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+
+      msg.innerHTML = `Hotovo: <code>${a.download}</code> (staženo).`;
+    });
+  </script>
 </body>
 </html>
