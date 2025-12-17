@@ -17,6 +17,8 @@
       --code-bg:#f6f6f6;
       --btn-bg:#ffffff;
       --btn-border:#aaaaaa;
+      --shadow: 0 10px 40px rgba(0,0,0,.06);
+      --card-radius:16px;
     }
 
     @media (prefers-color-scheme: dark){
@@ -30,6 +32,7 @@
         --code-bg:#1c2230;
         --btn-bg:#151924;
         --btn-border:#2a3242;
+        --shadow: 0 10px 50px rgba(0,0,0,.35);
       }
     }
 
@@ -43,6 +46,7 @@
       --code-bg:#f6f6f6;
       --btn-bg:#ffffff;
       --btn-border:#aaaaaa;
+      --shadow: 0 10px 40px rgba(0,0,0,.06);
     }
 
     html[data-theme="dark"]{
@@ -55,15 +59,18 @@
       --code-bg:#1c2230;
       --btn-bg:#151924;
       --btn-border:#2a3242;
+      --shadow: 0 10px 50px rgba(0,0,0,.35);
     }
+
+    *{box-sizing:border-box}
 
     body{
       background:var(--bg);
       color:var(--text);
       font-family:system-ui,Segoe UI,Arial,sans-serif;
-      max-width:900px;
+      max-width:980px;
       margin:40px auto;
-      padding:0 16px
+      padding:0 16px;
     }
 
     .topbar{
@@ -71,27 +78,32 @@
       align-items:center;
       justify-content:space-between;
       gap:12px;
-      margin-bottom:18px
+      margin-bottom:18px;
+    }
+
+    h1{
+      margin:0;
+      font-size:44px;
+      letter-spacing:.2px;
     }
 
     .card{
       background:var(--card);
       border:1px solid var(--border);
-      border-radius:14px;
-      padding:16px
+      border-radius:var(--card-radius);
+      padding:18px;
+      box-shadow:var(--shadow);
     }
 
-    /* ✅ místo flex: grid zarovná všechno do jedné roviny */
+    /* controls layout */
     .controls{
       display:grid;
       gap:12px;
-      align-items:end; /* důležité: zarovná tlačítko na spodek inputů */
+      align-items:end;
     }
 
-    /* mobil: všechno pod sebou */
     .controls > *{ width:100% }
 
-    /* desktop: file | head | marker | button */
     @media (min-width:860px){
       .controls{
         grid-template-columns: 1.35fr 1fr 1fr auto;
@@ -99,26 +111,34 @@
       .controls > *{ width:auto }
     }
 
+    /* make desktop row feel aligned even when labels wrap */
+    @media (min-width:860px){
+      .controls label{ min-width: 210px; }
+    }
+
     label{
       display:flex;
       flex-direction:column;
       gap:6px;
       font-size:14px;
-      color:var(--text)
+      color:var(--text);
+      line-height:1.2;
     }
 
     input[type="file"]{
       padding:8px;
-      color:var(--text)
+      color:var(--text);
+      background:transparent;
     }
 
     input[type="number"],
     input[type="text"]{
-      padding:8px;
+      padding:10px 10px;
       border:1px solid var(--border);
-      border-radius:10px;
+      border-radius:12px;
       background:var(--input-bg);
-      color:var(--text)
+      color:var(--text);
+      height:40px;
     }
 
     button{
@@ -128,29 +148,57 @@
       background:var(--btn-bg);
       color:var(--text);
       cursor:pointer;
-      height:40px; /* ✅ stejné jako inputy (opticky srovná) */
+      height:40px;
       white-space:nowrap;
     }
 
     button:disabled{
       opacity:.5;
-      cursor:not-allowed
+      cursor:not-allowed;
     }
 
     .ghost{
       padding:8px 12px;
       font-size:14px;
-      height:auto
+      height:auto;
     }
 
     small{color:var(--muted)}
-    code{background:var(--code-bg);padding:2px 6px;border-radius:6px}
-    .ok{margin-top:10px}
+    code{background:var(--code-bg);padding:2px 6px;border-radius:8px}
+
+    .meta{
+      margin-top:14px;
+      display:grid;
+      gap:10px;
+      font-size:14px;
+    }
+
+    details{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 12px;
+      background:rgba(0,0,0,0);
+    }
+
+    details > summary{
+      cursor:pointer;
+      font-weight:600;
+      list-style:none;
+      outline:none;
+    }
+    details > summary::-webkit-details-marker{ display:none; }
+
+    .legal{
+      margin-top:10px;
+      display:grid;
+      gap:10px;
+    }
+
+    .ok{margin-top:14px;font-size:15px}
   </style>
 </head>
 
 <body>
-
   <div class="topbar">
     <h1>CSV Cleaner</h1>
     <button id="themeBtn" class="ghost" type="button">Tmavý režim</button>
@@ -173,129 +221,149 @@
       <button id="run" disabled>Promazat a stáhnout</button>
     </div>
 
-    <p><small>
-      Zpracování probíhá <b>přímo v prohlížeči</b>.  
-      Data se nikam neodesílají ani neukládají na server.
-    </small></p>
+    <div class="meta">
+      <small>
+        Zpracování probíhá <b>přímo v prohlížeči</b>. Data se nikam neodesílají ani neukládají na server.
+      </small>
 
-    <p><small>
-      Aplikace podporuje i slučování více CSV souborů do jednoho výstupu.
-      Při práci s větším počtem nebo velmi velkými soubory může výkon záviset
-      na možnostech <b>Vašeho zařízení a prohlížeče</b>.
-    </small></p>
+      <small id="capNote">
+        Aplikace podporuje i slučování více CSV souborů do jednoho výstupu. Při práci s větším počtem nebo velmi velkými soubory může výkon záviset na možnostech <b>Vašeho zařízení a prohlížeče</b>.
+      </small>
 
+      <details>
+        <summary>Právní informace a odpovědnost</summary>
+        <div class="legal">
+          <small>
+            <b>Odpovědnost:</b> Aplikace je poskytována „tak, jak je“. Autor nenese odpovědnost za případné chyby, ztrátu dat ani škody vzniklé použitím tohoto nástroje.
+            Doporučujeme pracovat s kopií původních souborů (záloha).
+          </small>
+          <small>
+            <b>Soukromí:</b> Soubory jsou zpracovány výhradně lokálně na Vašem zařízení. Žádná data nejsou odesílána na server, ukládána ani sdílena s třetí stranou.
+          </small>
+          <small>
+            <b>Vhodné použití:</b> Pro nejlepší stabilitu používejte rozumné velikosti souborů a aktualizovaný prohlížeč. Při extrémních objemech dat může dojít k pomalejší odezvě nebo chybě z důvodu omezení paměti prohlížeče.
+          </small>
+        </div>
+      </details>
 
-    <div id="msg" class="ok"></div>
+      <div id="msg" class="ok"></div>
+    </div>
   </div>
 
 <script>
-const fileEl = document.getElementById("file");
-const runBtn = document.getElementById("run");
-const msg = document.getElementById("msg");
-const themeBtn = document.getElementById("themeBtn");
+  const fileEl = document.getElementById("file");
+  const runBtn = document.getElementById("run");
+  const msg = document.getElementById("msg");
+  const themeBtn = document.getElementById("themeBtn");
 
-function getSystemTheme(){
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-function applyTheme(t){
-  if(!t){
-    document.documentElement.removeAttribute("data-theme");
-  }else{
-    document.documentElement.setAttribute("data-theme", t);
+  function getSystemTheme(){
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
-  themeBtn.textContent = (t || getSystemTheme()) === "dark"
-    ? "Světlý režim"
-    : "Tmavý režim";
-}
-applyTheme(localStorage.getItem("theme"));
-
-themeBtn.addEventListener("click", () => {
-  const current = document.documentElement.getAttribute("data-theme") || getSystemTheme();
-  const next = current === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", next);
-  applyTheme(next);
-});
-
-fileEl.addEventListener("change", () => {
-  runBtn.disabled = !(fileEl.files && fileEl.files.length);
-  msg.textContent = "";
-});
-
-function detectDelimiter(line){
-  const sc = (line.match(/;/g) || []).length;
-  const cm = (line.match(/,/g) || []).length;
-  return sc >= cm ? ";" : ",";
-}
-function normalizeLines(text){
-  return text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
-}
-function cleanOneCsv(text, removeTopN, markerText){
-  let lines = normalizeLines(text);
-  lines = lines.slice(Math.max(0, removeTopN));
-  if(markerText){
-    const cutAt = lines.findIndex(l => l.includes(markerText));
-    if(cutAt !== -1) lines = lines.slice(0, cutAt);
-  }
-  while(lines.length && lines[lines.length-1].trim()==="") lines.pop();
-  return lines;
-}
-function renumberFirstColumn(lines, delimiter){
-  if(lines.length <= 1) return lines;
-  const header = lines[0];
-  const body = lines.slice(1).filter(l => l.trim() !== "");
-  const out = body.map((line, i) => {
-    const cells = line.split(delimiter);
-    cells[0] = String(i + 1);
-    return cells.join(delimiter);
-  });
-  return [header, ...out];
-}
-
-runBtn.addEventListener("click", async () => {
-  const files = Array.from(fileEl.files || []);
-  if(!files.length) return;
-
-  const headN = Math.max(0, parseInt(document.getElementById("head").value || "0", 10));
-  const marker = (document.getElementById("marker").value || "").trim();
-
-  const contents = await Promise.all(files.map(f => f.text()));
-  const cleanedParts = contents.map(txt => cleanOneCsv(txt, headN, marker));
-
-  const firstNonEmpty = cleanedParts.find(p => p && p.length);
-  if(!firstNonEmpty){
-    msg.textContent = "Nic ke zpracování.";
-    return;
-  }
-
-  const delimiter = detectDelimiter(firstNonEmpty[0]);
-
-  const merged = [];
-  let headerKept = false;
-  for(const part of cleanedParts){
-    if(!part || !part.length) continue;
-    if(!headerKept){
-      merged.push(...part);
-      headerKept = true;
+  function applyTheme(t){
+    if(!t){
+      document.documentElement.removeAttribute("data-theme");
     }else{
-      merged.push(...part.slice(1));
+      document.documentElement.setAttribute("data-theme", t);
     }
+    themeBtn.textContent = (t || getSystemTheme()) === "dark" ? "Světlý režim" : "Tmavý režim";
+  }
+  applyTheme(localStorage.getItem("theme"));
+
+  themeBtn.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") || getSystemTheme();
+    const next = current === "dark" ? "light" : "dark";
+    localStorage.setItem("theme", next);
+    applyTheme(next);
+  });
+
+  fileEl.addEventListener("change", () => {
+    runBtn.disabled = !(fileEl.files && fileEl.files.length);
+    msg.textContent = "";
+  });
+
+  function detectDelimiter(line){
+    const sc = (line.match(/;/g) || []).length;
+    const cm = (line.match(/,/g) || []).length;
+    return sc >= cm ? ";" : ",";
   }
 
-  const finalLines = renumberFirstColumn(merged, delimiter);
-  const result = finalLines.join("\n") + "\n";
+  function normalizeLines(text){
+    return text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+  }
 
-  const blob = new Blob([result], { type:"text/csv;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = files.length === 1 ? "clean.csv" : "merged_clean.csv";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(a.href);
+  function cleanOneCsv(text, removeTopN, markerText){
+    let lines = normalizeLines(text);
+    lines = lines.slice(Math.max(0, removeTopN));
 
-  msg.innerHTML = `Hotovo: <code>${a.download}</code>`;
-});
+    if(markerText){
+      const cutAt = lines.findIndex(l => l.includes(markerText));
+      if(cutAt !== -1) lines = lines.slice(0, cutAt);
+    }
+
+    while(lines.length && lines[lines.length-1].trim()==="") lines.pop();
+    return lines;
+  }
+
+  function renumberFirstColumn(lines, delimiter){
+    if(lines.length <= 1) return lines;
+    const header = lines[0];
+    const body = lines.slice(1).filter(l => l.trim() !== "");
+
+    const out = body.map((line, i) => {
+      const cells = line.split(delimiter);
+      cells[0] = String(i + 1);
+      return cells.join(delimiter);
+    });
+
+    return [header, ...out];
+  }
+
+  runBtn.addEventListener("click", async () => {
+    const files = Array.from(fileEl.files || []);
+    if(!files.length) return;
+
+    const headN = Math.max(0, parseInt(document.getElementById("head").value || "0", 10));
+    const marker = (document.getElementById("marker").value || "").trim();
+
+    const contents = await Promise.all(files.map(f => f.text()));
+    const cleanedParts = contents.map(txt => cleanOneCsv(txt, headN, marker));
+
+    const firstNonEmpty = cleanedParts.find(p => p && p.length);
+    if(!firstNonEmpty){
+      msg.textContent = "Nic ke zpracování.";
+      return;
+    }
+
+    const delimiter = detectDelimiter(firstNonEmpty[0]);
+
+    const merged = [];
+    let headerKept = false;
+
+    for(const part of cleanedParts){
+      if(!part || !part.length) continue;
+
+      if(!headerKept){
+        merged.push(...part);
+        headerKept = true;
+      }else{
+        merged.push(...part.slice(1));
+      }
+    }
+
+    const finalLines = renumberFirstColumn(merged, delimiter);
+    const result = finalLines.join("\n") + "\n";
+
+    const blob = new Blob([result], { type:"text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = files.length === 1 ? "clean.csv" : "merged_clean.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+
+    msg.innerHTML = `Hotovo: <code>${a.download}</code>`;
+  });
 </script>
-
 </body>
 </html>
