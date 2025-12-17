@@ -81,24 +81,35 @@
       padding:16px
     }
 
-    .row{
+    /* ✅ místo flex: grid zarovná všechno do jedné roviny */
+    .controls{
+      display:grid;
+      gap:12px;
+      align-items:end; /* důležité: zarovná tlačítko na spodek inputů */
+    }
+
+    /* mobil: všechno pod sebou */
+    .controls > *{ width:100% }
+
+    /* desktop: file | head | marker | button */
+    @media (min-width:860px){
+      .controls{
+        grid-template-columns: 1.35fr 1fr 1fr auto;
+      }
+      .controls > *{ width:auto }
+    }
+
+    label{
       display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center
+      flex-direction:column;
+      gap:6px;
+      font-size:14px;
+      color:var(--text)
     }
 
     input[type="file"]{
       padding:8px;
-      width:100%;
       color:var(--text)
-    }
-
-    label{
-      width:100%;
-      display:flex;
-      flex-direction:column;
-      gap:4px
     }
 
     input[type="number"],
@@ -117,7 +128,8 @@
       background:var(--btn-bg);
       color:var(--text);
       cursor:pointer;
-      width:100%
+      height:40px; /* ✅ stejné jako inputy (opticky srovná) */
+      white-space:nowrap;
     }
 
     button:disabled{
@@ -127,18 +139,13 @@
 
     .ghost{
       padding:8px 12px;
-      font-size:14px
+      font-size:14px;
+      height:auto
     }
 
     small{color:var(--muted)}
     code{background:var(--code-bg);padding:2px 6px;border-radius:6px}
     .ok{margin-top:10px}
-
-    @media (min-width:640px){
-      label{width:auto}
-      input[type="file"]{width:auto}
-      button{width:auto}
-    }
   </style>
 </head>
 
@@ -150,7 +157,7 @@
   </div>
 
   <div class="card">
-    <div class="row">
+    <div class="controls">
       <input id="file" type="file" accept=".csv,text/csv" multiple>
 
       <label>
@@ -183,7 +190,6 @@ const themeBtn = document.getElementById("themeBtn");
 function getSystemTheme(){
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
-
 function applyTheme(t){
   if(!t){
     document.documentElement.removeAttribute("data-theme");
@@ -194,7 +200,6 @@ function applyTheme(t){
     ? "Světlý režim"
     : "Tmavý režim";
 }
-
 applyTheme(localStorage.getItem("theme"));
 
 themeBtn.addEventListener("click", () => {
@@ -214,38 +219,28 @@ function detectDelimiter(line){
   const cm = (line.match(/,/g) || []).length;
   return sc >= cm ? ";" : ",";
 }
-
 function normalizeLines(text){
   return text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
 }
-
 function cleanOneCsv(text, removeTopN, markerText){
   let lines = normalizeLines(text);
   lines = lines.slice(Math.max(0, removeTopN));
-
   if(markerText){
     const cutAt = lines.findIndex(l => l.includes(markerText));
     if(cutAt !== -1) lines = lines.slice(0, cutAt);
   }
-
-  while(lines.length && lines[lines.length-1].trim()===""){
-    lines.pop();
-  }
+  while(lines.length && lines[lines.length-1].trim()==="") lines.pop();
   return lines;
 }
-
 function renumberFirstColumn(lines, delimiter){
   if(lines.length <= 1) return lines;
-
   const header = lines[0];
   const body = lines.slice(1).filter(l => l.trim() !== "");
-
   const out = body.map((line, i) => {
     const cells = line.split(delimiter);
     cells[0] = String(i + 1);
     return cells.join(delimiter);
   });
-
   return [header, ...out];
 }
 
@@ -269,7 +264,6 @@ runBtn.addEventListener("click", async () => {
 
   const merged = [];
   let headerKept = false;
-
   for(const part of cleanedParts){
     if(!part || !part.length) continue;
     if(!headerKept){
