@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CSV Cleaner</title>
-  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" href="favicon.ico">
 
   <style>
     :root{
@@ -95,7 +95,6 @@
       box-shadow:var(--shadow);
     }
 
-    /* controls layout */
     .controls{
       display:grid;
       gap:12px;
@@ -111,7 +110,6 @@
       .controls > *{ width:auto }
     }
 
-    /* make desktop row feel aligned even when labels wrap */
     @media (min-width:860px){
       .controls label{ min-width: 210px; }
     }
@@ -226,8 +224,12 @@
         Zpracování probíhá <b>přímo v prohlížeči</b>. Data se nikam neodesílají ani neukládají na server.
       </small>
 
-      <small id="capNote">
-        Aplikace podporuje i slučování více CSV souborů do jednoho výstupu. Při práci s větším počtem nebo velmi velkými soubory může výkon záviset na možnostech <b>Vašeho zařízení a prohlížeče</b>.
+      <small>
+        Aplikace podporuje i slučování více CSV souborů do jednoho výstupu.
+      </small>
+
+      <small>
+        Při práci s větším počtem nebo velmi velkými soubory může výkon záviset na možnostech <b>Vašeho zařízení a prohlížeče</b>.
       </small>
 
       <details>
@@ -259,6 +261,7 @@
   function getSystemTheme(){
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
+
   function applyTheme(t){
     if(!t){
       document.documentElement.removeAttribute("data-theme");
@@ -267,6 +270,7 @@
     }
     themeBtn.textContent = (t || getSystemTheme()) === "dark" ? "Světlý režim" : "Tmavý režim";
   }
+
   applyTheme(localStorage.getItem("theme"));
 
   themeBtn.addEventListener("click", () => {
@@ -318,6 +322,10 @@
     return [header, ...out];
   }
 
+  function baseName(filename){
+    return filename.replace(/^.*[\\/]/, "").replace(/\.[^/.]+$/, "");
+  }
+
   runBtn.addEventListener("click", async () => {
     const files = Array.from(fileEl.files || []);
     if(!files.length) return;
@@ -356,13 +364,19 @@
     const blob = new Blob([result], { type:"text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = files.length === 1 ? "clean.csv" : "merged_clean.csv";
+
+    const outName = (files.length === 1)
+      ? `${baseName(files[0].name)}_clean.csv`
+      : "merged_clean.csv";
+
+    a.download = outName;
+
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(a.href);
 
-    msg.innerHTML = `Hotovo: <code>${a.download}</code>`;
+    msg.innerHTML = `Hotovo: <code>${outName}</code>`;
   });
 </script>
 </body>
