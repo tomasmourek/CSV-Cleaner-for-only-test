@@ -5,141 +5,296 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CSV Cleaner</title>
   <link rel="icon" href="/favicon.ico">
+
   <style>
-    body{font-family:system-ui,Segoe UI,Arial,sans-serif;max-width:900px;margin:40px auto;padding:0 16px}
-    .card{border:1px solid #ddd;border-radius:14px;padding:18px}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    input[type="file"]{padding:8px}
-    input[type="number"], input[type="text"]{padding:8px;border:1px solid #bbb;border-radius:10px}
-    button{padding:10px 14px;border-radius:12px;border:1px solid #aaa;background:#fff;cursor:pointer}
-    button:disabled{opacity:.5;cursor:not-allowed}
-    small{color:#555}
-    code{background:#f6f6f6;padding:2px 6px;border-radius:6px}
+    :root{
+      --bg:#ffffff;
+      --text:#111111;
+      --muted:#555555;
+      --card:#ffffff;
+      --border:#dddddd;
+      --input-bg:#ffffff;
+      --code-bg:#f6f6f6;
+      --btn-bg:#ffffff;
+      --btn-border:#aaaaaa;
+    }
+
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0f1115;
+        --text:#e7e7e7;
+        --muted:#b6b6b6;
+        --card:#151924;
+        --border:#2a3242;
+        --input-bg:#0f1115;
+        --code-bg:#1c2230;
+        --btn-bg:#151924;
+        --btn-border:#2a3242;
+      }
+    }
+
+    html[data-theme="light"]{
+      --bg:#ffffff;
+      --text:#111111;
+      --muted:#555555;
+      --card:#ffffff;
+      --border:#dddddd;
+      --input-bg:#ffffff;
+      --code-bg:#f6f6f6;
+      --btn-bg:#ffffff;
+      --btn-border:#aaaaaa;
+    }
+
+    html[data-theme="dark"]{
+      --bg:#0f1115;
+      --text:#e7e7e7;
+      --muted:#b6b6b6;
+      --card:#151924;
+      --border:#2a3242;
+      --input-bg:#0f1115;
+      --code-bg:#1c2230;
+      --btn-bg:#151924;
+      --btn-border:#2a3242;
+    }
+
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,Segoe UI,Arial,sans-serif;
+      max-width:900px;
+      margin:40px auto;
+      padding:0 16px
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:18px
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:16px
+    }
+
+    .row{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center
+    }
+
+    input[type="file"]{
+      padding:8px;
+      width:100%;
+      color:var(--text)
+    }
+
+    label{
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      gap:4px
+    }
+
+    input[type="number"],
+    input[type="text"]{
+      padding:8px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:var(--input-bg);
+      color:var(--text)
+    }
+
+    button{
+      padding:10px 14px;
+      border-radius:12px;
+      border:1px solid var(--btn-border);
+      background:var(--btn-bg);
+      color:var(--text);
+      cursor:pointer;
+      width:100%
+    }
+
+    button:disabled{
+      opacity:.5;
+      cursor:not-allowed
+    }
+
+    .ghost{
+      padding:8px 12px;
+      font-size:14px
+    }
+
+    small{color:var(--muted)}
+    code{background:var(--code-bg);padding:2px 6px;border-radius:6px}
     .ok{margin-top:10px}
+
+    @media (min-width:640px){
+      label{width:auto}
+      input[type="file"]{width:auto}
+      button{width:auto}
+    }
   </style>
 </head>
+
 <body>
-  <h1>CSV Cleaner</h1>
+
+  <div class="topbar">
+    <h1>CSV Cleaner</h1>
+    <button id="themeBtn" class="ghost" type="button">Tmavý režim</button>
+  </div>
 
   <div class="card">
     <div class="row">
-      <input id="file" type="file" accept=".csv,text/csv" multiple />
+      <input id="file" type="file" accept=".csv,text/csv" multiple>
+
       <label>
-        Odebrat řádky: 1 až ...
-        <input id="head" type="number" value="16" min="0" style="width:90px">
+        Odebrat řádky 1 až
+        <input id="head" type="number" value="16" min="0">
       </label>
+
       <label>
-        Odebrat od textu:
-        <input id="marker" type="text" value="Sazba DPH" style="width:160px">
+        Odebrat od textu
+        <input id="marker" type="text" value="Sazba DPH">
       </label>
+
       <button id="run" disabled>Promazat a stáhnout</button>
     </div>
 
     <p><small>
-      Zpracování probíhá <b>přímo v prohlížeči</b>. Soubor se nikam neodesílá ani neukládá na server.
+      Zpracování probíhá <b>přímo v prohlížeči</b>.  
+      Data se nikam neodesílají ani neukládají na server.
     </small></p>
 
     <div id="msg" class="ok"></div>
   </div>
 
-  <script>
-    const fileEl = document.getElementById("file");
-    const runBtn = document.getElementById("run");
-    const msg = document.getElementById("msg");
+<script>
+const fileEl = document.getElementById("file");
+const runBtn = document.getElementById("run");
+const msg = document.getElementById("msg");
+const themeBtn = document.getElementById("themeBtn");
 
-    fileEl.addEventListener("change", () => {
-      runBtn.disabled = !(fileEl.files && fileEl.files.length);
-      msg.textContent = "";
-    });
+function getSystemTheme(){
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
 
-    function detectDelimiter(line) {
-      const sc = (line.match(/;/g) || []).length;
-      const cm = (line.match(/,/g) || []).length;
-      return sc >= cm ? ";" : ",";
+function applyTheme(t){
+  if(!t){
+    document.documentElement.removeAttribute("data-theme");
+  }else{
+    document.documentElement.setAttribute("data-theme", t);
+  }
+  themeBtn.textContent = (t || getSystemTheme()) === "dark"
+    ? "Světlý režim"
+    : "Tmavý režim";
+}
+
+applyTheme(localStorage.getItem("theme"));
+
+themeBtn.addEventListener("click", () => {
+  const current = document.documentElement.getAttribute("data-theme") || getSystemTheme();
+  const next = current === "dark" ? "light" : "dark";
+  localStorage.setItem("theme", next);
+  applyTheme(next);
+});
+
+fileEl.addEventListener("change", () => {
+  runBtn.disabled = !(fileEl.files && fileEl.files.length);
+  msg.textContent = "";
+});
+
+function detectDelimiter(line){
+  const sc = (line.match(/;/g) || []).length;
+  const cm = (line.match(/,/g) || []).length;
+  return sc >= cm ? ";" : ",";
+}
+
+function normalizeLines(text){
+  return text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
+}
+
+function cleanOneCsv(text, removeTopN, markerText){
+  let lines = normalizeLines(text);
+  lines = lines.slice(Math.max(0, removeTopN));
+
+  if(markerText){
+    const cutAt = lines.findIndex(l => l.includes(markerText));
+    if(cutAt !== -1) lines = lines.slice(0, cutAt);
+  }
+
+  while(lines.length && lines[lines.length-1].trim()===""){
+    lines.pop();
+  }
+  return lines;
+}
+
+function renumberFirstColumn(lines, delimiter){
+  if(lines.length <= 1) return lines;
+
+  const header = lines[0];
+  const body = lines.slice(1).filter(l => l.trim() !== "");
+
+  const out = body.map((line, i) => {
+    const cells = line.split(delimiter);
+    cells[0] = String(i + 1);
+    return cells.join(delimiter);
+  });
+
+  return [header, ...out];
+}
+
+runBtn.addEventListener("click", async () => {
+  const files = Array.from(fileEl.files || []);
+  if(!files.length) return;
+
+  const headN = Math.max(0, parseInt(document.getElementById("head").value || "0", 10));
+  const marker = (document.getElementById("marker").value || "").trim();
+
+  const contents = await Promise.all(files.map(f => f.text()));
+  const cleanedParts = contents.map(txt => cleanOneCsv(txt, headN, marker));
+
+  const firstNonEmpty = cleanedParts.find(p => p && p.length);
+  if(!firstNonEmpty){
+    msg.textContent = "Nic ke zpracování.";
+    return;
+  }
+
+  const delimiter = detectDelimiter(firstNonEmpty[0]);
+
+  const merged = [];
+  let headerKept = false;
+
+  for(const part of cleanedParts){
+    if(!part || !part.length) continue;
+    if(!headerKept){
+      merged.push(...part);
+      headerKept = true;
+    }else{
+      merged.push(...part.slice(1));
     }
+  }
 
-    function normalizeLines(text) {
-      return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
-    }
+  const finalLines = renumberFirstColumn(merged, delimiter);
+  const result = finalLines.join("\n") + "\n";
 
-    function cleanOneCsv(text, removeTopN, markerText) {
-      let lines = normalizeLines(text);
+  const blob = new Blob([result], { type:"text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = files.length === 1 ? "clean.csv" : "merged_clean.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
 
-      lines = lines.slice(Math.max(0, removeTopN));
+  msg.innerHTML = `Hotovo: <code>${a.download}</code>`;
+});
+</script>
 
-      if (markerText) {
-        const cutAt = lines.findIndex(l => l.includes(markerText));
-        if (cutAt !== -1) lines = lines.slice(0, cutAt);
-      }
-
-      while (lines.length && lines[lines.length - 1].trim() === "") {
-        lines.pop();
-      }
-
-      return lines;
-    }
-
-    function renumberFirstColumn(lines, delimiter) {
-      if (lines.length <= 1) return lines;
-
-      const header = lines[0];
-      const body = lines.slice(1).filter(l => l.trim() !== "");
-
-      const renumbered = body.map((line, i) => {
-        const cells = line.split(delimiter);
-        cells[0] = String(i + 1);
-        return cells.join(delimiter);
-      });
-
-      return [header, ...renumbered];
-    }
-
-    runBtn.addEventListener("click", async () => {
-      const files = Array.from(fileEl.files || []);
-      if (!files.length) return;
-
-      const headN = Math.max(0, parseInt(document.getElementById("head").value || "0", 10));
-      const marker = (document.getElementById("marker").value || "").trim();
-
-      const contents = await Promise.all(files.map(f => f.text()));
-      const cleanedParts = contents.map(txt => cleanOneCsv(txt, headN, marker));
-
-      const firstNonEmpty = cleanedParts.find(p => p && p.length);
-      if (!firstNonEmpty || firstNonEmpty.length === 0) {
-        msg.textContent = "Nic ke zpracování.";
-        return;
-      }
-
-      const delimiter = detectDelimiter(firstNonEmpty[0]);
-
-      const merged = [];
-      let headerKept = false;
-
-      for (const part of cleanedParts) {
-        if (!part || part.length === 0) continue;
-
-        if (!headerKept) {
-          merged.push(...part);
-          headerKept = true;
-        } else {
-          merged.push(...part.slice(1));
-        }
-      }
-
-      const finalLines = renumberFirstColumn(merged, delimiter);
-      const result = finalLines.join("\n") + "\n";
-
-      const blob = new Blob([result], { type: "text/csv;charset=utf-8" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = files.length === 1 ? "clean.csv" : "merged_clean.csv";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(a.href);
-
-      msg.innerHTML = `Hotovo: <code>${a.download}</code> (staženo).`;
-    });
-  </script>
 </body>
 </html>
