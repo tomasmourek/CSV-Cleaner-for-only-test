@@ -19,9 +19,6 @@
       --btn-border:#aaaaaa;
       --shadow: 0 10px 40px rgba(0,0,0,.06);
       --card-radius:16px;
-
-      /* vodoznak */
-      --wm:#0b8f3f;
     }
 
     @media (prefers-color-scheme: dark){
@@ -36,8 +33,6 @@
         --btn-bg:#151924;
         --btn-border:#2a3242;
         --shadow: 0 10px 50px rgba(0,0,0,.35);
-
-        --wm:#22c55e;
       }
     }
 
@@ -52,8 +47,6 @@
       --btn-bg:#ffffff;
       --btn-border:#aaaaaa;
       --shadow: 0 10px 40px rgba(0,0,0,.06);
-
-      --wm:#0b8f3f;
     }
 
     html[data-theme="dark"]{
@@ -67,8 +60,6 @@
       --btn-bg:#151924;
       --btn-border:#2a3242;
       --shadow: 0 10px 50px rgba(0,0,0,.35);
-
-      --wm:#22c55e;
     }
 
     *{box-sizing:border-box}
@@ -97,34 +88,11 @@
     }
 
     .card{
-      position:relative;       /* ✅ kvůli vodoznaku */
-      overflow:hidden;         /* ✅ aby nelezl ven */
       background:var(--card);
       border:1px solid var(--border);
       border-radius:var(--card-radius);
       padding:18px;
       box-shadow:var(--shadow);
-    }
-
-    /* ✅ vodoznak (SVG) */
-    .watermark{
-      position:absolute;
-      left:-70px;
-      bottom:-90px;
-      width:560px;
-      max-width:80%;
-      opacity:.10;
-      pointer-events:none;
-      z-index:0;
-      color:var(--wm);
-      transform:rotate(-6deg);
-      user-select:none;
-    }
-
-    /* ✅ obsah karty nad vodoznak */
-    .card > *{
-      position:relative;
-      z-index:1;
     }
 
     .controls{
@@ -235,15 +203,6 @@
   </div>
 
   <div class="card">
-    <!-- ✅ velké levé logo CSV (vodoznak) -->
-    <svg class="watermark" viewBox="0 0 600 450" aria-hidden="true" focusable="false">
-      <g fill="currentColor">
-        <path d="M120 40h220l100 100v260a30 30 0 0 1-30 30H120a30 30 0 0 1-30-30V70a30 30 0 0 1 30-30z"/>
-        <path d="M340 40v100h100z"/>
-        <path d="M170 300c-22 0-40-18-40-40s18-40 40-40c14 0 26 7 33 18l-20 10c-3-5-7-8-13-8-10 0-18 8-18 20s8 20 18 20c6 0 10-3 14-9l20 10c-8 13-21 19-34 19zm90 0c-22 0-40-18-40-40s18-40 40-40 40 18 40 40-18 40-40 40zm0-20c11 0 20-9 20-20s-9-20-20-20-20 9-20 20 9 20 20 20zm80 18-30-76h22l18 48 18-48h22l-30 76z"/>
-      </g>
-    </svg>
-
     <div class="controls">
       <input id="file" type="file" accept=".csv,text/csv" multiple>
 
@@ -290,10 +249,11 @@
       </details>
 
       <div id="msg" class="ok"></div>
-
+      
       <small style="opacity:.7">
-        CSV Cleaner · verze 1.0 · 2025 · vytvořeno uživateli pro uživatele
+       CSV Cleaner · verze 1.0 · 2025 · vytvořeno uživateli pro uživatele
       </small>
+
     </div>
   </div>
 
