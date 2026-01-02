@@ -19,6 +19,15 @@
       --btn-border:#aaaaaa;
       --shadow: 0 10px 40px rgba(0,0,0,.06);
       --card-radius:16px;
+
+      --chip-bg:#f5f6f8;
+      --chip-border:#d9dde5;
+      --chip-active-bg:#e9eefc;
+      --chip-active-border:#9fb4ff;
+
+      --warn-bg:#fff7e6;
+      --warn-border:#f1d39b;
+      --warn-text:#7a4a00;
     }
 
     @media (prefers-color-scheme: dark){
@@ -33,6 +42,15 @@
         --btn-bg:#151924;
         --btn-border:#2a3242;
         --shadow: 0 10px 50px rgba(0,0,0,.35);
+
+        --chip-bg:#141a26;
+        --chip-border:#2a3242;
+        --chip-active-bg:#1a2440;
+        --chip-active-border:#5f7cff;
+
+        --warn-bg:#2a210f;
+        --warn-border:#5a4724;
+        --warn-text:#ffd38a;
       }
     }
 
@@ -47,6 +65,15 @@
       --btn-bg:#ffffff;
       --btn-border:#aaaaaa;
       --shadow: 0 10px 40px rgba(0,0,0,.06);
+
+      --chip-bg:#f5f6f8;
+      --chip-border:#d9dde5;
+      --chip-active-bg:#e9eefc;
+      --chip-active-border:#9fb4ff;
+
+      --warn-bg:#fff7e6;
+      --warn-border:#f1d39b;
+      --warn-text:#7a4a00;
     }
 
     html[data-theme="dark"]{
@@ -60,6 +87,15 @@
       --btn-bg:#151924;
       --btn-border:#2a3242;
       --shadow: 0 10px 50px rgba(0,0,0,.35);
+
+      --chip-bg:#141a26;
+      --chip-border:#2a3242;
+      --chip-active-bg:#1a2440;
+      --chip-active-border:#5f7cff;
+
+      --warn-bg:#2a210f;
+      --warn-border:#5a4724;
+      --warn-text:#ffd38a;
     }
 
     *{box-sizing:border-box}
@@ -95,12 +131,66 @@
       box-shadow:var(--shadow);
     }
 
+    .vendorbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+      margin-bottom:14px;
+    }
+
+    .vendorBtn{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--chip-border);
+      background:var(--chip-bg);
+      color:var(--text);
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .vendorBtn[aria-pressed="true"]{
+      background:var(--chip-active-bg);
+      border-color:var(--chip-active-border);
+    }
+
+    .vendorLogo{
+      width:44px;
+      height:28px;
+      border-radius:10px;
+      border:1px solid var(--border);
+      background:var(--card);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      flex:0 0 auto;
+    }
+
+    .vendorLogo img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+      padding:4px;
+    }
+
+    .vendorText{
+      display:flex;
+      flex-direction:column;
+      line-height:1.1;
+    }
+    .vendorText b{font-size:14px}
+    .vendorText small{font-size:12px;color:var(--muted)}
+
     .controls{
       display:grid;
       gap:12px;
       align-items:end;
     }
-
     .controls > *{ width:100% }
 
     @media (min-width:860px){
@@ -192,6 +282,17 @@
       gap:10px;
     }
 
+    .note{
+      border:1px solid var(--warn-border);
+      background:var(--warn-bg);
+      color:var(--warn-text);
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:14px;
+      line-height:1.35;
+      display:none;
+    }
+
     .ok{margin-top:14px;font-size:15px}
   </style>
 </head>
@@ -203,8 +304,36 @@
   </div>
 
   <div class="card">
+
+    <!-- DODAVATEL -->
+    <div class="vendorbar" aria-label="Výběr dodavatele">
+      <button class="vendorBtn" id="vendorLKQ" type="button" aria-pressed="true">
+        <span class="vendorLogo">
+          <img src="assets/AKLogo.png" alt="LKQ">
+        </span>
+        <span class="vendorText">
+          <b>LKQ</b>
+          <small>Dodací listy LKQ</small>
+        </span>
+      </button>
+
+      <button class="vendorBtn" id="vendorSAG" type="button" aria-pressed="false">
+        <span class="vendorLogo">
+          <img src="assets/SAG_logo_ctverec-1.png" alt="SAG">
+        </span>
+        <span class="vendorText">
+          <b>SAG</b>
+          <small>Dodací listy SAG</small>
+        </span>
+      </button>
+    </div>
+
+    <div id="vendorNote" class="note"></div>
+
+    <!-- OVLÁDÁNÍ -->
     <div class="controls">
-      <input id="file" type="file" accept=".csv,text/csv" multiple>
+      <!-- max 1 soubor -->
+      <input id="file" type="file" accept=".csv,text/csv">
 
       <label>
         Odebrat řádky 1 až
@@ -221,15 +350,8 @@
 
     <div class="meta">
       <small>
-        Zpracování probíhá <b>přímo v prohlížeči</b>. Data se nikam neodesílají ani neukládají na server.
-      </small>
-
-      <small>
-        Aplikace podporuje slučování více CSV souborů do jednoho výstupu.
-      </small>
-
-      <small>
-        Při práci s větším počtem nebo velmi velkými soubory může výkon záviset na možnostech <b>Vašeho zařízení a prohlížeče</b>.
+        Nástroj je určen pro <b>dodací listy vybraného dodavatele</b> (LKQ / SAG). Zpracování probíhá <b>přímo v prohlížeči</b>.
+        Data se nikam neodesílají ani neukládají na server.
       </small>
 
       <details>
@@ -237,10 +359,10 @@
         <div class="legal">
           <small>
             <b>Odpovědnost:</b> Aplikace je poskytována „tak, jak je“. Autor nenese odpovědnost za případné chyby, ztrátu dat ani škody vzniklé použitím tohoto nástroje.
-            Doporučujeme pracovat s kopií původních souborů (záloha).
+            Doporučujeme pracovat s kopií původního souboru (záloha).
           </small>
           <small>
-            <b>Soukromí:</b> Soubory jsou zpracovány výhradně lokálně na Vašem zařízení. Žádná data nejsou odesílána na server, ukládána ani sdílena s třetí stranou.
+            <b>Soukromí:</b> Soubor je zpracován výhradně lokálně na Vašem zařízení. Žádná data nejsou odesílána na server, ukládána ani sdílena s třetí stranou.
           </small>
           <small>
             <b>Vhodné použití:</b> Pro nejlepší stabilitu používejte rozumné velikosti souborů a aktualizovaný prohlížeč. Při extrémních objemech dat může dojít k pomalejší odezvě nebo chybě z důvodu omezení paměti prohlížeče.
@@ -249,11 +371,10 @@
       </details>
 
       <div id="msg" class="ok"></div>
-      
-      <small style="opacity:.7">
-       CSV Cleaner · verze 1.0 · 2025 · vytvořeno uživateli pro uživatele
-      </small>
 
+      <small style="opacity:.7">
+        CSV Cleaner · verze 1.1 · 2025 · vytvořeno uživateli pro uživatele
+      </small>
     </div>
   </div>
 
@@ -262,6 +383,18 @@
   const runBtn = document.getElementById("run");
   const msg = document.getElementById("msg");
   const themeBtn = document.getElementById("themeBtn");
+
+  const vendorLKQ = document.getElementById("vendorLKQ");
+  const vendorSAG = document.getElementById("vendorSAG");
+  const vendorNote = document.getElementById("vendorNote");
+
+  // LKQ je hotové, SAG zatím placeholder
+  const VENDORS = {
+    LKQ: { enabled: true,  headN: 16, marker: "Sazba DPH" },
+    SAG: { enabled: false, headN: 0,  marker: "" }
+  };
+
+  let currentVendor = "LKQ";
 
   function getSystemTheme(){
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -275,7 +408,6 @@
     }
     themeBtn.textContent = (t || getSystemTheme()) === "dark" ? "Světlý režim" : "Tmavý režim";
   }
-
   applyTheme(localStorage.getItem("theme"));
 
   themeBtn.addEventListener("click", () => {
@@ -285,16 +417,42 @@
     applyTheme(next);
   });
 
-  fileEl.addEventListener("change", () => {
-    runBtn.disabled = !(fileEl.files && fileEl.files.length);
-    msg.textContent = "";
-  });
-
-  function detectDelimiter(line){
-    const sc = (line.match(/;/g) || []).length;
-    const cm = (line.match(/,/g) || []).length;
-    return sc >= cm ? ";" : ",";
+  function updateRunState(){
+    const hasFile = !!(fileEl.files && fileEl.files.length);
+    const vendorEnabled = !!VENDORS[currentVendor].enabled;
+    runBtn.disabled = !(hasFile && vendorEnabled);
   }
+
+  function setVendor(v){
+    currentVendor = v;
+
+    vendorLKQ.setAttribute("aria-pressed", v === "LKQ" ? "true" : "false");
+    vendorSAG.setAttribute("aria-pressed", v === "SAG" ? "true" : "false");
+
+    // nastav předvolby (u SAG zatím neutrální)
+    document.getElementById("head").value = VENDORS[v].headN;
+    document.getElementById("marker").value = VENDORS[v].marker;
+
+    // info/varování
+    if (!VENDORS[v].enabled) {
+      vendorNote.style.display = "block";
+      vendorNote.textContent = "SAG: nastavení zatím není připravené. Zatím používejte LKQ.";
+    } else {
+      vendorNote.style.display = "none";
+      vendorNote.textContent = "";
+    }
+
+    msg.textContent = "";
+    updateRunState();
+  }
+
+  vendorLKQ.addEventListener("click", () => setVendor("LKQ"));
+  vendorSAG.addEventListener("click", () => setVendor("SAG"));
+
+  fileEl.addEventListener("change", () => {
+    msg.textContent = "";
+    updateRunState();
+  });
 
   function normalizeLines(text){
     return text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
@@ -313,76 +471,39 @@
     return lines;
   }
 
-  function renumberFirstColumn(lines, delimiter){
-    if(lines.length <= 1) return lines;
-    const header = lines[0];
-    const body = lines.slice(1).filter(l => l.trim() !== "");
-
-    const out = body.map((line, i) => {
-      const cells = line.split(delimiter);
-      cells[0] = String(i + 1);
-      return cells.join(delimiter);
-    });
-
-    return [header, ...out];
-  }
-
-  function baseName(filename){
-    return filename.replace(/^.*[\\/]/, "").replace(/\.[^/.]+$/, "");
-  }
-
   runBtn.addEventListener("click", async () => {
-    const files = Array.from(fileEl.files || []);
-    if(!files.length) return;
+    const file = fileEl.files && fileEl.files[0];
+    if(!file) return;
+
+    if(!VENDORS[currentVendor].enabled){
+      msg.textContent = "Zvolený dodavatel zatím není nastaven.";
+      return;
+    }
 
     const headN = Math.max(0, parseInt(document.getElementById("head").value || "0", 10));
     const marker = (document.getElementById("marker").value || "").trim();
 
-    const contents = await Promise.all(files.map(f => f.text()));
-    const cleanedParts = contents.map(txt => cleanOneCsv(txt, headN, marker));
-
-    const firstNonEmpty = cleanedParts.find(p => p && p.length);
-    if(!firstNonEmpty){
-      msg.textContent = "Nic ke zpracování.";
-      return;
-    }
-
-    const delimiter = detectDelimiter(firstNonEmpty[0]);
-
-    const merged = [];
-    let headerKept = false;
-
-    for(const part of cleanedParts){
-      if(!part || !part.length) continue;
-
-      if(!headerKept){
-        merged.push(...part);
-        headerKept = true;
-      }else{
-        merged.push(...part.slice(1));
-      }
-    }
-
-    const finalLines = renumberFirstColumn(merged, delimiter);
-    const result = finalLines.join("\n") + "\n";
+    const text = await file.text();
+    const lines = cleanOneCsv(text, headN, marker);
+    const result = lines.join("\n") + "\n";
 
     const blob = new Blob([result], { type:"text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
 
-    const outName = (files.length === 1)
-      ? `${baseName(files[0].name)}_clean.csv`
-      : "merged_clean.csv";
-
-    a.download = outName;
+    // výstupní název = vstupní název (bez _clean)
+    a.download = file.name;
 
     document.body.appendChild(a);
     a.click();
     a.remove();
     URL.revokeObjectURL(a.href);
 
-    msg.innerHTML = `Hotovo: <code>${outName}</code>`;
+    msg.innerHTML = `Hotovo: <code>${a.download}</code> · dodavatel: <code>${currentVendor}</code>`;
   });
+
+  // start
+  setVendor("LKQ");
 </script>
 </body>
 </html>
