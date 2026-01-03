@@ -130,7 +130,7 @@
     small{color:var(--muted)}
     code{background:var(--code-bg);padding:2px 6px;border-radius:8px}
 
-    /* ====== ÚVOD (výběr dodavatele) ====== */
+    /* ===== ÚVOD (výběr dodavatele) ===== */
     .intro{
       display:grid;
       gap:14px;
@@ -155,12 +155,7 @@
       border-radius:14px;
       border:1px solid var(--border);
       background:var(--btn-bg);
-      box-shadow:none;
       text-align:left;
-    }
-
-    .vendorBtn:hover{
-      border-color: color-mix(in srgb, var(--border), var(--text) 25%);
     }
 
     .vendorLogo{
@@ -183,6 +178,16 @@
       display:block;
     }
 
+    .vendorLogo .fallback{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:600;
+      display:none;
+      padding:0 6px;
+      text-align:center;
+      line-height:1.1;
+    }
+
     .vendorText{
       display:flex;
       flex-direction:column;
@@ -202,7 +207,7 @@
       line-height:1.2;
     }
 
-    /* ====== APLIKACE (čištění) ====== */
+    /* ===== APLIKACE (čištění) ===== */
     .controls{
       display:grid;
       gap:12px;
@@ -270,6 +275,8 @@
       overflow:hidden;
       border:1px solid var(--border);
       background:var(--input-bg);
+      display:grid;
+      place-items:center;
     }
 
     .vendorBadge .miniLogo img{
@@ -278,6 +285,13 @@
       object-fit:contain;
       padding:4px;
       display:block;
+    }
+
+    .vendorBadge .miniLogo .fallback{
+      font-size:11px;
+      color:var(--muted);
+      font-weight:700;
+      display:none;
     }
 
     .vendorBadge strong{
@@ -334,7 +348,7 @@
     <button id="themeBtn" class="ghost" type="button">Tmavý režim</button>
   </div>
 
-  <!-- ===== ÚVODNÍ OBRAZOVKA: výběr dodavatele ===== -->
+  <!-- ÚVODNÍ OBRAZOVKA -->
   <div id="introCard" class="card">
     <div class="intro">
       <small>
@@ -344,7 +358,8 @@
       <div class="vendorGrid">
         <button id="btnLKQ" class="vendorBtn" type="button" aria-label="LKQ">
           <span class="vendorLogo">
-            <img src="lkq.png" alt="LKQ logo" loading="eager">
+            <img id="logoLKQ" src="logos/lkq.png" alt="LKQ logo" loading="eager">
+            <span class="fallback">LKQ</span>
           </span>
           <span class="vendorText">
             <span class="vendorName">LKQ</span>
@@ -354,7 +369,8 @@
 
         <button id="btnSAG" class="vendorBtn" type="button" aria-label="SAG">
           <span class="vendorLogo">
-            <img src="sag.png" alt="SAG logo" loading="eager">
+            <img id="logoSAG" src="logos/sag.png" alt="SAG logo" loading="eager">
+            <span class="fallback">SAG</span>
           </span>
           <span class="vendorText">
             <span class="vendorName">SAG</span>
@@ -369,11 +385,14 @@
     </div>
   </div>
 
-  <!-- ===== OBRAZOVKA APLIKACE: čištění ===== -->
+  <!-- APLIKACE -->
   <div id="appCard" class="card hidden">
     <div class="badgeRow">
       <div class="vendorBadge" id="vendorBadge">
-        <span class="miniLogo"><img id="vendorMiniLogo" src="lkq.png" alt="Dodavatel"></span>
+        <span class="miniLogo">
+          <img id="vendorMiniLogo" src="logos/lkq.png" alt="Dodavatel">
+          <span class="fallback" id="vendorMiniFallback">LKQ</span>
+        </span>
         <strong id="vendorName">LKQ</strong>
       </div>
 
@@ -381,7 +400,6 @@
     </div>
 
     <div class="controls">
-      <!-- jen 1 soubor -->
       <input id="file" type="file" accept=".csv,text/csv">
 
       <label>
@@ -427,7 +445,7 @@
   </div>
 
 <script>
-  // ====== THEME ======
+  // ===== THEME =====
   const themeBtn = document.getElementById("themeBtn");
 
   function getSystemTheme(){
@@ -450,7 +468,21 @@
     applyTheme(next);
   });
 
-  // ====== VIEW SWITCH ======
+  // ===== LOGO FALLBACKS =====
+  function wireLogoFallback(imgId){
+    const img = document.getElementById(imgId);
+    if(!img) return;
+    img.addEventListener("error", () => {
+      const container = img.parentElement;
+      const fallback = container ? container.querySelector(".fallback") : null;
+      img.style.display = "none";
+      if(fallback) fallback.style.display = "block";
+    });
+  }
+  wireLogoFallback("logoLKQ");
+  wireLogoFallback("logoSAG");
+
+  // ===== VIEW SWITCH =====
   const introCard = document.getElementById("introCard");
   const appCard = document.getElementById("appCard");
   const backBtn = document.getElementById("backBtn");
@@ -460,8 +492,9 @@
 
   const vendorNameEl = document.getElementById("vendorName");
   const vendorMiniLogo = document.getElementById("vendorMiniLogo");
+  const vendorMiniFallback = document.getElementById("vendorMiniFallback");
 
-  // ====== APP ELEMENTS ======
+  // ===== APP ELEMENTS =====
   const fileEl = document.getElementById("file");
   const runBtn = document.getElementById("run");
   const msg = document.getElementById("msg");
@@ -473,29 +506,32 @@
     LKQ: {
       head: 16,
       marker: "Sazba DPH",
-      logo: "lkq.png"
+      logo: "logos/lkq.png"
     },
     SAG: {
-      // zatím placeholder (můžeš později změnit podle reálného CSV)
       head: 16,
       marker: "Sazba DPH",
-      logo: "sag.png"
+      logo: "logos/sag.png"
     }
   };
 
-  let currentVendor = null;
-
   function setVendor(v){
-    currentVendor = v;
-
     const cfg = VENDORS[v];
     vendorNameEl.textContent = v;
+    vendorMiniFallback.textContent = v;
+
+    vendorMiniLogo.style.display = "block";
     vendorMiniLogo.src = cfg.logo;
+
+    vendorMiniLogo.onerror = () => {
+      vendorMiniLogo.style.display = "none";
+      vendorMiniFallback.style.display = "block";
+    };
+    vendorMiniFallback.style.display = "none";
 
     headEl.value = String(cfg.head);
     markerEl.value = cfg.marker;
 
-    // reset file state
     fileEl.value = "";
     runBtn.disabled = true;
     msg.textContent = "";
@@ -514,21 +550,11 @@
     runBtn.disabled = true;
   }
 
-  btnLKQ.addEventListener("click", () => {
-    setVendor("LKQ");
-    showApp();
-  });
+  btnLKQ.addEventListener("click", () => { setVendor("LKQ"); showApp(); });
+  btnSAG.addEventListener("click", () => { setVendor("SAG"); showApp(); });
+  backBtn.addEventListener("click", () => { showIntro(); });
 
-  btnSAG.addEventListener("click", () => {
-    setVendor("SAG");
-    showApp();
-  });
-
-  backBtn.addEventListener("click", () => {
-    showIntro();
-  });
-
-  // ====== FILE HANDLING (1 file only) ======
+  // ===== FILE HANDLING (1 file only) =====
   fileEl.addEventListener("change", () => {
     runBtn.disabled = !(fileEl.files && fileEl.files.length === 1);
     msg.textContent = "";
@@ -566,7 +592,7 @@
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
 
-    // DŮLEŽITÉ: výstupní název je STEJNÝ jako vstupní (bez "_clean")
+    // výstupní název je STEJNÝ jako vstupní (bez "_clean")
     a.download = file.name;
 
     document.body.appendChild(a);
