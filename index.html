@@ -19,15 +19,8 @@
       --btn-border:#aaaaaa;
       --shadow: 0 10px 40px rgba(0,0,0,.06);
       --card-radius:16px;
-
-      --chip-bg:#f5f6f8;
-      --chip-border:#d9dde5;
-      --chip-active-bg:#e9eefc;
-      --chip-active-border:#9fb4ff;
-
-      --warn-bg:#fff7e6;
-      --warn-border:#f1d39b;
-      --warn-text:#7a4a00;
+      --accent:#2f6bff;
+      --accent-bg: rgba(47,107,255,.10);
     }
 
     @media (prefers-color-scheme: dark){
@@ -42,15 +35,8 @@
         --btn-bg:#151924;
         --btn-border:#2a3242;
         --shadow: 0 10px 50px rgba(0,0,0,.35);
-
-        --chip-bg:#141a26;
-        --chip-border:#2a3242;
-        --chip-active-bg:#1a2440;
-        --chip-active-border:#5f7cff;
-
-        --warn-bg:#2a210f;
-        --warn-border:#5a4724;
-        --warn-text:#ffd38a;
+        --accent:#7aa2ff;
+        --accent-bg: rgba(122,162,255,.12);
       }
     }
 
@@ -65,15 +51,8 @@
       --btn-bg:#ffffff;
       --btn-border:#aaaaaa;
       --shadow: 0 10px 40px rgba(0,0,0,.06);
-
-      --chip-bg:#f5f6f8;
-      --chip-border:#d9dde5;
-      --chip-active-bg:#e9eefc;
-      --chip-active-border:#9fb4ff;
-
-      --warn-bg:#fff7e6;
-      --warn-border:#f1d39b;
-      --warn-text:#7a4a00;
+      --accent:#2f6bff;
+      --accent-bg: rgba(47,107,255,.10);
     }
 
     html[data-theme="dark"]{
@@ -87,15 +66,8 @@
       --btn-bg:#151924;
       --btn-border:#2a3242;
       --shadow: 0 10px 50px rgba(0,0,0,.35);
-
-      --chip-bg:#141a26;
-      --chip-border:#2a3242;
-      --chip-active-bg:#1a2440;
-      --chip-active-border:#5f7cff;
-
-      --warn-bg:#2a210f;
-      --warn-border:#5a4724;
-      --warn-text:#ffd38a;
+      --accent:#7aa2ff;
+      --accent-bg: rgba(122,162,255,.12);
     }
 
     *{box-sizing:border-box}
@@ -131,41 +103,74 @@
       box-shadow:var(--shadow);
     }
 
-    .vendorbar{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      align-items:center;
-      margin-bottom:14px;
+    .hidden{ display:none !important; }
+
+    button{
+      padding:10px 14px;
+      border-radius:12px;
+      border:1px solid var(--btn-border);
+      background:var(--btn-bg);
+      color:var(--text);
+      cursor:pointer;
+      height:40px;
+      white-space:nowrap;
+    }
+
+    button:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+    }
+
+    .ghost{
+      padding:8px 12px;
+      font-size:14px;
+      height:auto;
+    }
+
+    small{color:var(--muted)}
+    code{background:var(--code-bg);padding:2px 6px;border-radius:8px}
+
+    /* ====== ÚVOD (výběr dodavatele) ====== */
+    .intro{
+      display:grid;
+      gap:14px;
+    }
+
+    .vendorGrid{
+      display:grid;
+      gap:12px;
+      grid-template-columns: 1fr;
+    }
+
+    @media (min-width:720px){
+      .vendorGrid{ grid-template-columns: 1fr 1fr; }
     }
 
     .vendorBtn{
       display:flex;
       align-items:center;
-      gap:10px;
-      padding:10px 12px;
+      gap:12px;
+      height:auto;
+      padding:14px;
       border-radius:14px;
-      border:1px solid var(--chip-border);
-      background:var(--chip-bg);
-      color:var(--text);
-      cursor:pointer;
-      user-select:none;
+      border:1px solid var(--border);
+      background:var(--btn-bg);
+      box-shadow:none;
+      text-align:left;
     }
 
-    .vendorBtn[aria-pressed="true"]{
-      background:var(--chip-active-bg);
-      border-color:var(--chip-active-border);
+    .vendorBtn:hover{
+      border-color: color-mix(in srgb, var(--border), var(--text) 25%);
     }
 
     .vendorLogo{
       width:44px;
-      height:28px;
-      border-radius:10px;
+      height:44px;
+      border-radius:12px;
+      background:var(--input-bg);
       border:1px solid var(--border);
-      background:var(--card);
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display:grid;
+      place-items:center;
       overflow:hidden;
       flex:0 0 auto;
     }
@@ -174,22 +179,35 @@
       width:100%;
       height:100%;
       object-fit:contain;
+      padding:6px;
       display:block;
-      padding:4px;
     }
 
     .vendorText{
       display:flex;
       flex-direction:column;
-      line-height:1.1;
+      gap:2px;
+      min-width:0;
     }
-    .vendorText b{font-size:14px}
-    .vendorText small{font-size:12px;color:var(--muted)}
 
+    .vendorName{
+      font-weight:700;
+      line-height:1.1;
+      font-size:16px;
+    }
+
+    .vendorHint{
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.2;
+    }
+
+    /* ====== APLIKACE (čištění) ====== */
     .controls{
       display:grid;
       gap:12px;
       align-items:end;
+      margin-top:6px;
     }
     .controls > *{ width:100% }
 
@@ -198,9 +216,6 @@
         grid-template-columns: 1.35fr 1fr 1fr auto;
       }
       .controls > *{ width:auto }
-    }
-
-    @media (min-width:860px){
       .controls label{ min-width: 210px; }
     }
 
@@ -229,30 +244,45 @@
       height:40px;
     }
 
-    button{
-      padding:10px 14px;
+    .badgeRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+      flex-wrap:wrap;
+    }
+
+    .vendorBadge{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 10px;
+      border:1px solid var(--border);
       border-radius:12px;
-      border:1px solid var(--btn-border);
-      background:var(--btn-bg);
-      color:var(--text);
-      cursor:pointer;
-      height:40px;
-      white-space:nowrap;
+      background:var(--accent-bg);
     }
 
-    button:disabled{
-      opacity:.5;
-      cursor:not-allowed;
+    .vendorBadge .miniLogo{
+      width:26px;
+      height:26px;
+      border-radius:8px;
+      overflow:hidden;
+      border:1px solid var(--border);
+      background:var(--input-bg);
     }
 
-    .ghost{
-      padding:8px 12px;
+    .vendorBadge .miniLogo img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      padding:4px;
+      display:block;
+    }
+
+    .vendorBadge strong{
       font-size:14px;
-      height:auto;
     }
-
-    small{color:var(--muted)}
-    code{background:var(--code-bg);padding:2px 6px;border-radius:8px}
 
     .meta{
       margin-top:14px;
@@ -282,18 +312,19 @@
       gap:10px;
     }
 
-    .note{
-      border:1px solid var(--warn-border);
-      background:var(--warn-bg);
-      color:var(--warn-text);
-      border-radius:12px;
-      padding:10px 12px;
-      font-size:14px;
-      line-height:1.35;
-      display:none;
+    .ok{margin-top:14px;font-size:15px}
+
+    .footer{
+      margin-top:10px;
+      opacity:.7;
+      font-size:13px;
     }
 
-    .ok{margin-top:14px;font-size:15px}
+    .backBtn{
+      height:auto;
+      padding:8px 12px;
+      font-size:14px;
+    }
   </style>
 </head>
 
@@ -303,36 +334,54 @@
     <button id="themeBtn" class="ghost" type="button">Tmavý režim</button>
   </div>
 
-  <div class="card">
+  <!-- ===== ÚVODNÍ OBRAZOVKA: výběr dodavatele ===== -->
+  <div id="introCard" class="card">
+    <div class="intro">
+      <small>
+        Vyberte dodavatele. Nástroj je určen pro <b>dodací listy</b> vybraného dodavatele (LKQ / SAG).
+      </small>
 
-    <!-- DODAVATEL -->
-    <div class="vendorbar" aria-label="Výběr dodavatele">
-      <button class="vendorBtn" id="vendorLKQ" type="button" aria-pressed="true">
-        <span class="vendorLogo">
-          <img src="assets/AKLogo.png" alt="LKQ">
-        </span>
-        <span class="vendorText">
-          <b>LKQ</b>
-          <small>Dodací listy LKQ</small>
-        </span>
-      </button>
+      <div class="vendorGrid">
+        <button id="btnLKQ" class="vendorBtn" type="button" aria-label="LKQ">
+          <span class="vendorLogo">
+            <img src="lkq.png" alt="LKQ logo" loading="eager">
+          </span>
+          <span class="vendorText">
+            <span class="vendorName">LKQ</span>
+            <span class="vendorHint">Dodací listy LKQ</span>
+          </span>
+        </button>
 
-      <button class="vendorBtn" id="vendorSAG" type="button" aria-pressed="false">
-        <span class="vendorLogo">
-          <img src="assets/SAG_logo_ctverec-1.png" alt="SAG">
-        </span>
-        <span class="vendorText">
-          <b>SAG</b>
-          <small>Dodací listy SAG</small>
-        </span>
-      </button>
+        <button id="btnSAG" class="vendorBtn" type="button" aria-label="SAG">
+          <span class="vendorLogo">
+            <img src="sag.png" alt="SAG logo" loading="eager">
+          </span>
+          <span class="vendorText">
+            <span class="vendorName">SAG</span>
+            <span class="vendorHint">Dodací listy SAG (zatím připraveno)</span>
+          </span>
+        </button>
+      </div>
+
+      <small>
+        Zpracování probíhá <b>přímo v prohlížeči</b>. Data se nikam neodesílají ani neukládají na server.
+      </small>
+    </div>
+  </div>
+
+  <!-- ===== OBRAZOVKA APLIKACE: čištění ===== -->
+  <div id="appCard" class="card hidden">
+    <div class="badgeRow">
+      <div class="vendorBadge" id="vendorBadge">
+        <span class="miniLogo"><img id="vendorMiniLogo" src="lkq.png" alt="Dodavatel"></span>
+        <strong id="vendorName">LKQ</strong>
+      </div>
+
+      <button id="backBtn" class="backBtn" type="button">Změnit dodavatele</button>
     </div>
 
-    <div id="vendorNote" class="note"></div>
-
-    <!-- OVLÁDÁNÍ -->
     <div class="controls">
-      <!-- max 1 soubor -->
+      <!-- jen 1 soubor -->
       <input id="file" type="file" accept=".csv,text/csv">
 
       <label>
@@ -350,8 +399,7 @@
 
     <div class="meta">
       <small>
-        Nástroj je určen pro <b>dodací listy vybraného dodavatele</b> (LKQ / SAG). Zpracování probíhá <b>přímo v prohlížeči</b>.
-        Data se nikam neodesílají ani neukládají na server.
+        Nástroj je určen pro <b>dodací listy vybraného dodavatele</b> (LKQ / SAG).
       </small>
 
       <details>
@@ -359,10 +407,10 @@
         <div class="legal">
           <small>
             <b>Odpovědnost:</b> Aplikace je poskytována „tak, jak je“. Autor nenese odpovědnost za případné chyby, ztrátu dat ani škody vzniklé použitím tohoto nástroje.
-            Doporučujeme pracovat s kopií původního souboru (záloha).
+            Doporučujeme pracovat s kopií původních souborů (záloha).
           </small>
           <small>
-            <b>Soukromí:</b> Soubor je zpracován výhradně lokálně na Vašem zařízení. Žádná data nejsou odesílána na server, ukládána ani sdílena s třetí stranou.
+            <b>Soukromí:</b> Soubory jsou zpracovány výhradně lokálně na Vašem zařízení. Žádná data nejsou odesílána na server, ukládána ani sdílena s třetí stranou.
           </small>
           <small>
             <b>Vhodné použití:</b> Pro nejlepší stabilitu používejte rozumné velikosti souborů a aktualizovaný prohlížeč. Při extrémních objemech dat může dojít k pomalejší odezvě nebo chybě z důvodu omezení paměti prohlížeče.
@@ -372,34 +420,19 @@
 
       <div id="msg" class="ok"></div>
 
-      <small style="opacity:.7">
-        CSV Cleaner · verze 1.1 · 2025 · vytvořeno uživateli pro uživatele
-      </small>
+      <div class="footer">
+        CSV Cleaner · verze 1.2 · 2025 · vytvořeno uživateli pro uživatele
+      </div>
     </div>
   </div>
 
 <script>
-  const fileEl = document.getElementById("file");
-  const runBtn = document.getElementById("run");
-  const msg = document.getElementById("msg");
+  // ====== THEME ======
   const themeBtn = document.getElementById("themeBtn");
-
-  const vendorLKQ = document.getElementById("vendorLKQ");
-  const vendorSAG = document.getElementById("vendorSAG");
-  const vendorNote = document.getElementById("vendorNote");
-
-  // LKQ je hotové, SAG zatím placeholder
-  const VENDORS = {
-    LKQ: { enabled: true,  headN: 16, marker: "Sazba DPH" },
-    SAG: { enabled: false, headN: 0,  marker: "" }
-  };
-
-  let currentVendor = "LKQ";
 
   function getSystemTheme(){
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
-
   function applyTheme(t){
     if(!t){
       document.documentElement.removeAttribute("data-theme");
@@ -417,41 +450,88 @@
     applyTheme(next);
   });
 
-  function updateRunState(){
-    const hasFile = !!(fileEl.files && fileEl.files.length);
-    const vendorEnabled = !!VENDORS[currentVendor].enabled;
-    runBtn.disabled = !(hasFile && vendorEnabled);
-  }
+  // ====== VIEW SWITCH ======
+  const introCard = document.getElementById("introCard");
+  const appCard = document.getElementById("appCard");
+  const backBtn = document.getElementById("backBtn");
+
+  const btnLKQ = document.getElementById("btnLKQ");
+  const btnSAG = document.getElementById("btnSAG");
+
+  const vendorNameEl = document.getElementById("vendorName");
+  const vendorMiniLogo = document.getElementById("vendorMiniLogo");
+
+  // ====== APP ELEMENTS ======
+  const fileEl = document.getElementById("file");
+  const runBtn = document.getElementById("run");
+  const msg = document.getElementById("msg");
+  const headEl = document.getElementById("head");
+  const markerEl = document.getElementById("marker");
+
+  // Vendor presets
+  const VENDORS = {
+    LKQ: {
+      head: 16,
+      marker: "Sazba DPH",
+      logo: "lkq.png"
+    },
+    SAG: {
+      // zatím placeholder (můžeš později změnit podle reálného CSV)
+      head: 16,
+      marker: "Sazba DPH",
+      logo: "sag.png"
+    }
+  };
+
+  let currentVendor = null;
 
   function setVendor(v){
     currentVendor = v;
 
-    vendorLKQ.setAttribute("aria-pressed", v === "LKQ" ? "true" : "false");
-    vendorSAG.setAttribute("aria-pressed", v === "SAG" ? "true" : "false");
+    const cfg = VENDORS[v];
+    vendorNameEl.textContent = v;
+    vendorMiniLogo.src = cfg.logo;
 
-    // nastav předvolby (u SAG zatím neutrální)
-    document.getElementById("head").value = VENDORS[v].headN;
-    document.getElementById("marker").value = VENDORS[v].marker;
+    headEl.value = String(cfg.head);
+    markerEl.value = cfg.marker;
 
-    // info/varování
-    if (!VENDORS[v].enabled) {
-      vendorNote.style.display = "block";
-      vendorNote.textContent = "SAG: nastavení zatím není připravené. Zatím používejte LKQ.";
-    } else {
-      vendorNote.style.display = "none";
-      vendorNote.textContent = "";
-    }
-
+    // reset file state
+    fileEl.value = "";
+    runBtn.disabled = true;
     msg.textContent = "";
-    updateRunState();
   }
 
-  vendorLKQ.addEventListener("click", () => setVendor("LKQ"));
-  vendorSAG.addEventListener("click", () => setVendor("SAG"));
+  function showApp(){
+    introCard.classList.add("hidden");
+    appCard.classList.remove("hidden");
+  }
 
-  fileEl.addEventListener("change", () => {
+  function showIntro(){
+    appCard.classList.add("hidden");
+    introCard.classList.remove("hidden");
     msg.textContent = "";
-    updateRunState();
+    fileEl.value = "";
+    runBtn.disabled = true;
+  }
+
+  btnLKQ.addEventListener("click", () => {
+    setVendor("LKQ");
+    showApp();
+  });
+
+  btnSAG.addEventListener("click", () => {
+    setVendor("SAG");
+    showApp();
+  });
+
+  backBtn.addEventListener("click", () => {
+    showIntro();
+  });
+
+  // ====== FILE HANDLING (1 file only) ======
+  fileEl.addEventListener("change", () => {
+    runBtn.disabled = !(fileEl.files && fileEl.files.length === 1);
+    msg.textContent = "";
   });
 
   function normalizeLines(text){
@@ -472,26 +552,21 @@
   }
 
   runBtn.addEventListener("click", async () => {
-    const file = fileEl.files && fileEl.files[0];
+    const file = (fileEl.files && fileEl.files[0]) ? fileEl.files[0] : null;
     if(!file) return;
 
-    if(!VENDORS[currentVendor].enabled){
-      msg.textContent = "Zvolený dodavatel zatím není nastaven.";
-      return;
-    }
-
-    const headN = Math.max(0, parseInt(document.getElementById("head").value || "0", 10));
-    const marker = (document.getElementById("marker").value || "").trim();
+    const headN = Math.max(0, parseInt(headEl.value || "0", 10));
+    const marker = (markerEl.value || "").trim();
 
     const text = await file.text();
-    const lines = cleanOneCsv(text, headN, marker);
-    const result = lines.join("\n") + "\n";
+    const cleanedLines = cleanOneCsv(text, headN, marker);
+    const result = cleanedLines.join("\n") + "\n";
 
     const blob = new Blob([result], { type:"text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
 
-    // výstupní název = vstupní název (bez _clean)
+    // DŮLEŽITÉ: výstupní název je STEJNÝ jako vstupní (bez "_clean")
     a.download = file.name;
 
     document.body.appendChild(a);
@@ -499,11 +574,8 @@
     a.remove();
     URL.revokeObjectURL(a.href);
 
-    msg.innerHTML = `Hotovo: <code>${a.download}</code> · dodavatel: <code>${currentVendor}</code>`;
+    msg.innerHTML = `Hotovo: <code>${a.download}</code>`;
   });
-
-  // start
-  setVendor("LKQ");
 </script>
 </body>
 </html>
