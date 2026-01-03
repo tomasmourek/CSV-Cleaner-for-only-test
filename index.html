@@ -21,6 +21,10 @@
       --card-radius:16px;
       --accent:#2f6bff;
       --accent-bg: rgba(47,107,255,.10);
+
+      /* logo podložka (konstantně světlá i v dark) */
+      --logo-bg:#ffffff;
+      --logo-border: rgba(0,0,0,.10);
     }
 
     @media (prefers-color-scheme: dark){
@@ -37,6 +41,10 @@
         --shadow: 0 10px 50px rgba(0,0,0,.35);
         --accent:#7aa2ff;
         --accent-bg: rgba(122,162,255,.12);
+
+        /* pořád světlá podložka, jen trochu jiný border */
+        --logo-bg:#ffffff;
+        --logo-border: rgba(255,255,255,.14);
       }
     }
 
@@ -53,6 +61,8 @@
       --shadow: 0 10px 40px rgba(0,0,0,.06);
       --accent:#2f6bff;
       --accent-bg: rgba(47,107,255,.10);
+      --logo-bg:#ffffff;
+      --logo-border: rgba(0,0,0,.10);
     }
 
     html[data-theme="dark"]{
@@ -68,6 +78,8 @@
       --shadow: 0 10px 50px rgba(0,0,0,.35);
       --accent:#7aa2ff;
       --accent-bg: rgba(122,162,255,.12);
+      --logo-bg:#ffffff;
+      --logo-border: rgba(255,255,255,.14);
     }
 
     *{box-sizing:border-box}
@@ -162,8 +174,8 @@
       width:44px;
       height:44px;
       border-radius:12px;
-      background:var(--input-bg);
-      border:1px solid var(--border);
+      background:var(--logo-bg);            /* ✅ vždy světlé */
+      border:1px solid var(--logo-border); /* ✅ jemný rámeček */
       display:grid;
       place-items:center;
       overflow:hidden;
@@ -176,6 +188,15 @@
       object-fit:contain;
       padding:6px;
       display:block;
+      background:transparent;
+    }
+
+    /* ✅ Dark-mode „zlepšovák“ pro LKQ */
+    html[data-theme="dark"] #logoLKQ,
+    @media (prefers-color-scheme: dark){
+      html:not([data-theme="light"]) #logoLKQ{
+        filter: brightness(1.08) contrast(1.08) saturate(1.05);
+      }
     }
 
     .vendorLogo .fallback{
@@ -273,8 +294,8 @@
       height:26px;
       border-radius:8px;
       overflow:hidden;
-      border:1px solid var(--border);
-      background:var(--input-bg);
+      border:1px solid var(--logo-border);
+      background:var(--logo-bg); /* ✅ vždy světlé */
       display:grid;
       place-items:center;
     }
@@ -285,6 +306,14 @@
       object-fit:contain;
       padding:4px;
       display:block;
+    }
+
+    /* stejné zlepšení i pro mini LKQ */
+    html[data-theme="dark"] #vendorMiniLogo.lkq,
+    @media (prefers-color-scheme: dark){
+      html:not([data-theme="light"]) #vendorMiniLogo.lkq{
+        filter: brightness(1.08) contrast(1.08) saturate(1.05);
+      }
     }
 
     .vendorBadge .miniLogo .fallback{
@@ -520,6 +549,9 @@
     vendorNameEl.textContent = v;
     vendorMiniFallback.textContent = v;
 
+    vendorMiniLogo.classList.remove("lkq","sag");
+    vendorMiniLogo.classList.add(v === "LKQ" ? "lkq" : "sag");
+
     vendorMiniLogo.style.display = "block";
     vendorMiniLogo.src = cfg.logo;
 
@@ -592,7 +624,7 @@
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
 
-    // výstupní název je STEJNÝ jako vstupní (bez "_clean")
+    // výstupní název je STEJNÝ jako vstupní
     a.download = file.name;
 
     document.body.appendChild(a);
