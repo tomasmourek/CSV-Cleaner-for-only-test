@@ -25,7 +25,6 @@
       --accent:#2f6bff;
       --accent-bg: rgba(47,107,255,.10);
 
-      /* logo podložka (konstantně světlá i v dark) */
       --logo-bg:#ffffff;
       --logo-border: rgba(0,0,0,.10);
     }
@@ -45,7 +44,6 @@
         --accent:#7aa2ff;
         --accent-bg: rgba(122,162,255,.12);
 
-        /* pořád světlá podložka, jen trochu jiný border */
         --logo-bg:#ffffff;
         --logo-border: rgba(255,255,255,.14);
       }
@@ -145,7 +143,6 @@
     small{color:var(--muted)}
     code{background:var(--code-bg);padding:2px 6px;border-radius:8px}
 
-    /* ===== ÚVOD (výběr dodavatele) ===== */
     .intro{
       display:grid;
       gap:14px;
@@ -177,8 +174,8 @@
       width:44px;
       height:44px;
       border-radius:12px;
-      background:var(--logo-bg);            /* ✅ vždy světlé */
-      border:1px solid var(--logo-border); /* ✅ jemný rámeček */
+      background:var(--logo-bg);
+      border:1px solid var(--logo-border);
       display:grid;
       place-items:center;
       overflow:hidden;
@@ -194,7 +191,6 @@
       background:transparent;
     }
 
-    /* ✅ Dark-mode „zlepšovák“ pro LKQ */
     html[data-theme="dark"] #logoLKQ,
     @media (prefers-color-scheme: dark){
       html:not([data-theme="light"]) #logoLKQ{
@@ -231,7 +227,6 @@
       line-height:1.2;
     }
 
-    /* ===== APLIKACE (čištění) ===== */
     .controls{
       display:grid;
       gap:12px;
@@ -298,7 +293,7 @@
       border-radius:8px;
       overflow:hidden;
       border:1px solid var(--logo-border);
-      background:var(--logo-bg); /* ✅ vždy světlé */
+      background:var(--logo-bg);
       display:grid;
       place-items:center;
     }
@@ -309,14 +304,6 @@
       object-fit:contain;
       padding:4px;
       display:block;
-    }
-
-    /* stejné zlepšení i pro mini LKQ */
-    html[data-theme="dark"] #vendorMiniLogo.lkq,
-    @media (prefers-color-scheme: dark){
-      html:not([data-theme="light"]) #vendorMiniLogo.lkq{
-        filter: brightness(1.08) contrast(1.08) saturate(1.05);
-      }
     }
 
     .vendorBadge .miniLogo .fallback{
@@ -412,12 +399,11 @@
 
         <button id="btnCartec" class="vendorBtn" type="button" aria-label="Cartec">
           <span class="vendorLogo">
-            <!-- bez loga – fallback je vždy viditelný -->
             <span class="fallback" style="display:block;">CAR</span>
           </span>
           <span class="vendorText">
             <span class="vendorName">Cartec</span>
-            <span class="vendorHint">Mazání do řádku 50 a od „Celkem zboží“</span>
+            <span class="vendorHint">Dodací listy/Faktury Cartec</span>
           </span>
         </button>
       </div>
@@ -463,7 +449,6 @@
     <div class="meta">
       <small>
         Nástroj je určen pro <b>dodací listy / faktury vybraného dodavatele</b>.
-        U Cartec je konec položek detekován dle textu (např. <code>Celkem zboží</code>).
       </small>
 
       <details>
@@ -561,12 +546,9 @@
       logo: "logos/sag.png"
     },
     CARTEC: {
-      // požadavek: smazat vše do řádku 50 včetně
       head: 50,
-      // požadavek: odmazat od místa "čáry" = začátek souhrnu; čára je jen formát,
-      // v datech ji nenajdeme -> hledáme první řádek, kde začíná souhrn
       marker: "Celkem zboží|Celkem CZK|Rekapitulace DPH",
-      logo: "" // bez loga
+      logo: ""
     }
   };
 
@@ -629,21 +611,39 @@
     return text.replace(/\r\n/g,"\n").replace(/\r/g,"\n").split("\n");
   }
 
-  // ===== Helpers for multi-format input =====
   function extOf(name){
     const i = name.lastIndexOf(".");
     return i === -1 ? "" : name.slice(i+1).toLowerCase();
   }
 
-  function toCsvRow(arr){
-    return arr.map(v => {
-      const s = (v ?? "").toString();
-      if(/[",\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
-      return s;
-    }).join(",");
+  // ===== CSV helpers (Excel CZ) =====
+  function csvEscape(cell, sep){
+    let s = (cell ?? "").toString();
+    s = s.replace(/\r?\n/g, " ");
+    const mustQuote = s.includes(sep) || s.includes('"');
+    if(mustQuote){
+      s = '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
   }
 
-  async function readExcelAsCsv(file){
+  function toDelimitedRow(arr, sep){
+    return arr.map(v => csvEscape(v, sep)).join(sep);
+  }
+
+  function downloadCsvUtf8Bom(text, filename){
+    const BOM = "\uFEFF";
+    const blob = new Blob([BOM + text], { type:"text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function readExcelAsCzCsv(file){
     if(!window.XLSX) throw new Error("Chybí XLSX knihovna (SheetJS).");
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type:"array" });
@@ -652,9 +652,10 @@
       header: 1,
       raw: false,
       defval: "",
-      blankrows: true   // důležité: zachová prázdné řádky -> sedí číslování řádků
+      blankrows: true
     });
-    return rows.map(r => toCsvRow(r)).join("\n") + "\n";
+    // Excel CZ: oddělovač ;
+    return rows.map(r => toDelimitedRow(r, ";")).join("\n") + "\n";
   }
 
   function getTextByLocalName(parent, localName){
@@ -665,7 +666,7 @@
     return "";
   }
 
-  async function readIsdocAsCsv(file){
+  async function readIsdocAsCzCsv(file){
     const xmlText = await file.text();
     const doc = new DOMParser().parseFromString(xmlText, "application/xml");
     if(doc.getElementsByTagName("parsererror").length){
@@ -674,10 +675,6 @@
 
     const invoiceNumber = getTextByLocalName(doc, "ID") || getTextByLocalName(doc, "InvoiceNumber");
     const issueDate     = getTextByLocalName(doc, "IssueDate");
-
-    // hrubě – ISDOC má namespace, "Name" se může opakovat; tohle je základní fallback
-    const sellerName    = getTextByLocalName(doc, "SellerParty") ? getTextByLocalName(doc, "Name") : "";
-    const buyerName     = getTextByLocalName(doc, "BuyerParty") ? getTextByLocalName(doc, "Name") : "";
 
     const lines = [];
     const nodes = doc.getElementsByTagName("*");
@@ -688,42 +685,36 @@
         const qty   = getTextByLocalName(el, "InvoicedQuantity") || getTextByLocalName(el, "Quantity");
         const price = getTextByLocalName(el, "UnitPrice") || getTextByLocalName(el, "Price");
         const total = getTextByLocalName(el, "LineExtensionAmount") || getTextByLocalName(el, "Total");
-        lines.push([invoiceNumber, issueDate, sellerName, buyerName, desc, qty, price, total]);
+        lines.push([invoiceNumber, issueDate, desc, qty, price, total]);
       }
     }
 
-    const header = ["InvoiceNumber","IssueDate","Seller","Buyer","Description","Quantity","UnitPrice","LineTotal"];
-    const out = [toCsvRow(header)];
-    for(const r of lines) out.push(toCsvRow(r));
+    const header = ["InvoiceNumber","IssueDate","Description","Quantity","UnitPrice","LineTotal"];
+    const out = [toDelimitedRow(header, ";")];
+    for(const r of lines) out.push(toDelimitedRow(r, ";"));
     return out.join("\n") + "\n";
   }
 
-  async function readInputFileAsTextOrCsv(file){
+  async function readInputFileAsText(file){
     const ext = extOf(file.name);
     if(ext === "csv") return await file.text();
-    if(ext === "xlsx" || ext === "xls") return await readExcelAsCsv(file);
-    if(ext === "isdoc") return await readIsdocAsCsv(file);
+    if(ext === "xlsx" || ext === "xls") return await readExcelAsCzCsv(file);
+    if(ext === "isdoc") return await readIsdocAsCzCsv(file);
     throw new Error("Nepodporovaný typ souboru: " + ext);
   }
 
   function parseMarkerList(markerText){
-    // více markerů oddělených |
     return (markerText || "")
       .split("|")
       .map(s => s.trim())
       .filter(Boolean);
   }
 
-  function cleanOneCsv(text, removeTopN, markerText){
+  function cleanOneText(text, removeTopN, markerText){
     let lines = normalizeLines(text);
-
-    // odstranit řádky 1..N včetně => slice(N) při 0-based
     lines = lines.slice(Math.max(0, removeTopN));
 
     const markers = parseMarkerList(markerText);
-
-    // U Cartec je "Celkem zboží" typicky v prostředku řádku (mezery/taby),
-    // proto používáme includes() (ne přísné ==), ale jen proti markerům, které jsou jasné.
     if(markers.length){
       const cutAt = lines.findIndex(l => {
         const t = (l ?? "").trim();
@@ -733,7 +724,7 @@
     }
 
     while(lines.length && lines[lines.length-1].trim()==="") lines.pop();
-    return lines;
+    return lines.join("\n") + "\n";
   }
 
   runBtn.addEventListener("click", async () => {
@@ -745,29 +736,23 @@
 
     let text;
     try{
-      text = await readInputFileAsTextOrCsv(file);
+      text = await readInputFileAsText(file);
     }catch(e){
       msg.textContent = "Chyba: " + (e?.message || e);
       return;
     }
 
-    const cleanedLines = cleanOneCsv(text, headN, marker);
-    const result = cleanedLines.join("\n") + "\n";
+    const cleaned = cleanOneText(text, headN, marker);
 
-    const blob = new Blob([result], { type:"text/csv;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-
-    // výstupní název: CSV zůstane, Excel/ISDOC -> .csv
     const ext = extOf(file.name);
-    a.download = (ext === "csv") ? file.name : file.name.replace(/\.[^.]+$/, "") + ".csv";
+    const outName = (ext === "csv")
+      ? file.name
+      : file.name.replace(/\.[^.]+$/, "") + ".csv";
 
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(a.href);
+    // ✅ klíčová oprava: vždy ukládej UTF-8 s BOM
+    downloadCsvUtf8Bom(cleaned, outName);
 
-    msg.innerHTML = `Hotovo: <code>${a.download}</code>`;
+    msg.innerHTML = `Hotovo: <code>${outName}</code>`;
   });
 </script>
 </body>
