@@ -470,7 +470,7 @@
       <div id="msg" class="ok"></div>
 
       <div class="footer">
-        CSV Cleaner · verze 1.3 · 2026 · vytvořeno uživateli pro uživatele
+        CSV Cleaner · verze 1.4 · 2026 · vytvořeno uživateli pro uživatele
       </div>
     </div>
   </div>
@@ -538,21 +538,27 @@
     LKQ: {
       head: 16,
       marker: "Sazba DPH",
-      logo: "logos/lkq.png"
+      logo: "logos/lkq.png",
+      excel_mode: "simple"
     },
     SAG: {
       head: 16,
       marker: "Sazba DPH",
-      logo: "logos/sag.png"
+      logo: "logos/sag.png",
+      excel_mode: "simple"
     },
     CARTEC: {
       head: 50,
       marker: "Celkem zboží|Celkem CZK|Rekapitulace DPH",
-      logo: ""
+      logo: "",
+      excel_mode: "table" // ✅ pro Cartec: najít tabulku v XLSX a vyříznout ji
     }
   };
 
+  let ACTIVE_VENDOR = "LKQ";
+
   function setVendor(v){
+    ACTIVE_VENDOR = v;
     const cfg = VENDORS[v];
 
     vendorNameEl.textContent = v;
@@ -643,19 +649,137 @@
     URL.revokeObjectURL(a.href);
   }
 
-  async function readExcelAsCzCsv(file){
+  function cleanCellString(v){
+    let s = (v ?? "").toString();
+
+    // odstranit currency symboly, které Excel/SheetJS někdy přidá
+    s = s.replace(/\$/g, "");
+
+    // sjednotit NBSP a vícenásobné mezery
+    s = s.replace(/\u00A0/g, " ");
+    s = s.replace(/[ \t]+/g, " ").trim();
+
+    return s;
+  }
+
+  function isRowEmpty(arr){
+    for(const v of arr){
+      if(cleanCellString(v) !== "") return false;
+    }
+    return true;
+  }
+
+  function rowIncludesAll(row, needles){
+    const joined = row.map(cleanCellString).join(" | ").toLowerCase();
+    return needles.every(n => joined.includes(n.toLowerCase()));
+  }
+
+  function findTableWindow(rows){
+    // hlavička Cartec tabulky
+    const headerNeedles = ["číslo","popis","množ","mj","jedn","dpH","částka"];
+
+    let headerRow = -1;
+    for(let i=0;i<rows.length;i++){
+      const r = rows[i] || [];
+      if(rowIncludesAll(r, ["číslo","popis"]) && rowIncludesAll(r, ["částka"]) && rowIncludesAll(r, ["dph"])){
+        headerRow = i;
+        break;
+      }
+    }
+
+    if(headerRow === -1){
+      // fallback: zkus aspoň "Číslo" + "Popis"
+      for(let i=0;i<rows.length;i++){
+        const r = rows[i] || [];
+        if(rowIncludesAll(r, ["číslo","popis"])){
+          headerRow = i;
+          break;
+        }
+      }
+    }
+
+    if(headerRow === -1) return null;
+
+    const header = rows[headerRow] || [];
+    let startCol = -1;
+    let endCol = -1;
+
+    for(let c=0;c<header.length;c++){
+      if(cleanCellString(header[c]) !== ""){
+        startCol = c;
+        break;
+      }
+    }
+    for(let c=header.length-1;c>=0;c--){
+      if(cleanCellString(header[c]) !== ""){
+        endCol = c;
+        break;
+      }
+    }
+
+    if(startCol === -1 || endCol === -1 || endCol < startCol) return null;
+
+    return { headerRow, startCol, endCol };
+  }
+
+  async function readExcelAsCzCsv(file, mode){
     if(!window.XLSX) throw new Error("Chybí XLSX knihovna (SheetJS).");
+
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type:"array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
+
+    // načti jako 2D pole (formatted strings)
     const rows = XLSX.utils.sheet_to_json(ws, {
       header: 1,
       raw: false,
       defval: "",
-      blankrows: true
+      blankrows: false
     });
-    // Excel CZ: oddělovač ;
-    return rows.map(r => toDelimitedRow(r, ";")).join("\n") + "\n";
+
+    // ✅ režim TABLE: najdi tabulku a vyřízni jen relevantní sloupce/řádky
+    if(mode === "table"){
+      const win = findTableWindow(rows);
+      if(!win){
+        // fallback – aspoň ořez prázdných okrajů
+        return rows
+          .filter(r => !isRowEmpty(r))
+          .map(r => toDelimitedRow(r.map(cleanCellString), ";"))
+          .join("\n") + "\n";
+      }
+
+      const { headerRow, startCol, endCol } = win;
+      const out = [];
+
+      // přidej hlavičku
+      const hdr = (rows[headerRow] || []).slice(startCol, endCol+1).map(cleanCellString);
+      out.push(toDelimitedRow(hdr, ";"));
+
+      // data řádky: dokud nenarazíme na "Celkem zboží" apod.
+      const stopNeedles = ["celkem zboží","celkem czk","rekapitulace dph"];
+
+      for(let i=headerRow+1;i<rows.length;i++){
+        const r = rows[i] || [];
+        const slice = r.slice(startCol, endCol+1).map(cleanCellString);
+
+        if(isRowEmpty(slice)) continue;
+
+        const joined = slice.join(" ").toLowerCase();
+        if(stopNeedles.some(n => joined.includes(n))) break;
+
+        out.push(toDelimitedRow(slice, ";"));
+      }
+
+      return out.join("\n") + "\n";
+    }
+
+    // SIMPLE mode: export celého listu
+    const out2 = rows
+      .filter(r => !isRowEmpty(r))
+      .map(r => toDelimitedRow(r.map(cleanCellString), ";"))
+      .join("\n") + "\n";
+
+    return out2;
   }
 
   function getTextByLocalName(parent, localName){
@@ -691,15 +815,18 @@
 
     const header = ["InvoiceNumber","IssueDate","Description","Quantity","UnitPrice","LineTotal"];
     const out = [toDelimitedRow(header, ";")];
-    for(const r of lines) out.push(toDelimitedRow(r, ";"));
+    for(const r of lines) out.push(toDelimitedRow(r.map(cleanCellString), ";"));
     return out.join("\n") + "\n";
   }
 
   async function readInputFileAsText(file){
     const ext = extOf(file.name);
+    const cfg = VENDORS[ACTIVE_VENDOR];
+
     if(ext === "csv") return await file.text();
-    if(ext === "xlsx" || ext === "xls") return await readExcelAsCzCsv(file);
+    if(ext === "xlsx" || ext === "xls") return await readExcelAsCzCsv(file, cfg?.excel_mode || "simple");
     if(ext === "isdoc") return await readIsdocAsCzCsv(file);
+
     throw new Error("Nepodporovaný typ souboru: " + ext);
   }
 
@@ -712,6 +839,8 @@
 
   function cleanOneText(text, removeTopN, markerText){
     let lines = normalizeLines(text);
+
+    // u CSV čistíme klasicky "head + marker"
     lines = lines.slice(Math.max(0, removeTopN));
 
     const markers = parseMarkerList(markerText);
@@ -742,14 +871,20 @@
       return;
     }
 
-    const cleaned = cleanOneText(text, headN, marker);
-
     const ext = extOf(file.name);
+    const cfg = VENDORS[ACTIVE_VENDOR];
+
+    // pokud je vstup XLSX/XLS/ISDOC, už je to CSV text; pro Cartec XLSX navíc už je vyříznutá tabulka
+    // ale pořád můžeš chtít dořezat "top + marker" (např. když někdo nahraje už CSV)
+    const cleaned = (ext === "csv")
+      ? cleanOneText(text, headN, marker)
+      : (cfg?.excel_mode === "table" ? text : cleanOneText(text, 0, "")); // u SIMPLE excelu už jsme odstranili prázdné řádky
+
     const outName = (ext === "csv")
       ? file.name
       : file.name.replace(/\.[^.]+$/, "") + ".csv";
 
-    // ✅ klíčová oprava: vždy ukládej UTF-8 s BOM
+    // ✅ ukládej UTF-8 s BOM (Excel CZ diakritika)
     downloadCsvUtf8Bom(cleaned, outName);
 
     msg.innerHTML = `Hotovo: <code>${outName}</code>`;
