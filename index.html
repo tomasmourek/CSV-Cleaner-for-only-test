@@ -470,7 +470,7 @@
       <div id="msg" class="ok"></div>
 
       <div class="footer">
-        CSV Cleaner · verze 1.5 · 2026 · vytvořeno uživateli pro uživatele
+        CSV Cleaner · verze 1.6 · 2026 · vytvořeno uživateli pro uživatele
       </div>
     </div>
   </div>
@@ -551,7 +551,7 @@
       head: 50,
       marker: "Celkem zboží|Celkem CZK|Rekapitulace DPH|Total|VAT",
       logo: "",
-      excel_mode: "cartec_map" // ✅ robustní mapování rozhozených sloupců podle hlaviček
+      excel_mode: "cartec_map"
     }
   };
 
@@ -637,7 +637,7 @@
     return arr.map(v => csvEscape(v, sep)).join(sep);
   }
 
-  // ✅ UTF-8 + BOM: Excel na Windows spolehlivě načte diakritiku (EN/CZ Excel je jedno)
+  // ✅ UTF-8 + BOM
   function downloadCsvUtf8Bom(text, filename){
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + text], { type:"text/csv;charset=utf-8" });
@@ -652,14 +652,9 @@
 
   function cleanCellString(v){
     let s = (v ?? "").toString();
-
-    // měnové symboly / bordel z formátování
     s = s.replace(/\$/g, "");
-
-    // NBSP a vícenásobné mezery
     s = s.replace(/\u00A0/g, " ");
     s = s.replace(/[ \t]+/g, " ").trim();
-
     return s;
   }
 
@@ -670,14 +665,12 @@
     return true;
   }
 
-  // ===== Robust header detection (CZ/EN, tolerantní) =====
+  // ===== Robust header detection (CZ/EN) =====
   function stripDiacritics(s){
-    // funguje v moderních prohlížečích
     return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
   function normKey(s){
-    // malá písmena, bez diakritiky, bez teček a bez extra znaků
     const t = stripDiacritics((s || "").toLowerCase());
     return t
       .replace(/\./g, " ")
@@ -687,7 +680,6 @@
       .trim();
   }
 
-  // Canonical fields, které chceme ve výstupu pro Cartec
   const CARTEC_FIELDS = [
     { key:"number",    label:"Číslo"     },
     { key:"desc",      label:"Popis"     },
@@ -699,19 +691,22 @@
     { key:"amount",    label:"Částka"    },
   ];
 
-  // Synonyma pro detekci hlaviček (CZ + EN + varianty)
+  // ✅ OPRAVA: přidána "slevy" + kmen "slev" (kvůli "% slevy" vs "% sleva")
   const CARTEC_SYNONYMS = {
-    number:    ["cislo","cisl o","item number","item no","number","code","part number","part no","article","artikl","produkt","product code"],
+    number:    ["cislo","item number","item no","number","code","part number","part no","article","artikl","produkt","product code"],
     desc:      ["popis","nazev","polozka","item","description","desc","product","goods","name"],
-    qty:       ["mnoz","mnozstvi","mnoz ","qty","quantity","count","pcs","pieces","amount qty"],
+    qty:       ["mnoz","mnozstvi","qty","quantity","count","pcs","pieces"],
     mj:        ["mj","merna jednotka","unit","uom","unit of measure","measure unit"],
-    unitprice: ["jedn cena","jednotkova cena","unit price","price","unitprice","price per unit"],
-    discount:  ["sleva","percent sleva","% sleva","discount","disc","rebate","% discount"],
+    unitprice: ["jedn cena","jednotkova cena","unit price","unitprice","price per unit","price"],
+    discount:  [
+      "sleva","slevy","slev",                 /* ✅ tady */
+      "% sleva","% slevy","percent sleva","percent slevy",
+      "discount","disc","rebate","% discount"
+    ],
     vat:       ["dph","dph percent","vat","vat percent","tax","tax percent","vat rate"],
     amount:    ["castka","celkem","total","line total","amount","sum","line amount","price total"]
   };
 
-  // Stop markers (CZ/EN)
   const CARTEC_STOP_MARKERS = [
     "celkem zbozi", "celkem czk", "rekapitulace dph",
     "total goods", "vat summary", "tax summary",
@@ -719,15 +714,12 @@
   ];
 
   function findCartecHeaderMapping(rows){
-    // najdi řádek, kde je dost hlaviček pro mapování
-    // povinné minimálně: číslo + popis + částka
     const required = ["number","desc","amount"];
 
     for(let r=0; r<rows.length; r++){
       const row = rows[r] || [];
       if(isRowEmpty(row)) continue;
 
-      // v rámci řádku udělej mapu "canonicalKey -> colIndex"
       const map = {};
       for(let c=0; c<row.length; c++){
         const cell = cleanCellString(row[c]);
@@ -735,26 +727,21 @@
 
         const nk = normKey(cell);
 
-        // zkus přiřadit k nějakému canonical field
         for(const field of CARTEC_FIELDS){
           const syns = CARTEC_SYNONYMS[field.key] || [];
-          // pokud se vejde do některého synonyma (contains), bereme to
           if(syns.some(s => nk.includes(normKey(s)))){
-            // preferuj první nález; pokud později najdeme "lepší" (přesnější), neřešíme - jednoduché a stabilní
             if(map[field.key] === undefined) map[field.key] = c;
           }
         }
       }
 
       const hasRequired = required.every(k => map[k] !== undefined);
-      // musí být ještě aspoň pár dalších, ať netrefíme náhodný text
       const countFound = Object.keys(map).length;
 
       if(hasRequired && countFound >= 5){
         return { headerRow: r, colMap: map };
       }
     }
-
     return null;
   }
 
@@ -780,7 +767,6 @@
   }
 
   function rowsToSimpleCsv(rows){
-    // pro SIMPLE: odstraní prázdné řádky a exportuje celý list jako ; CSV
     const out = rows
       .filter(r => !isRowEmpty(r || []))
       .map(r => toDelimitedRow((r || []).map(cleanCellString), ";"))
@@ -796,23 +782,18 @@
 
     const { headerRow, colMap } = found;
 
-    // sestav hlavičku výstupu v pevném pořadí
     const out = [];
     out.push(toDelimitedRow(CARTEC_FIELDS.map(f => f.label), ";"));
 
-    // data řádky
     for(let r = headerRow + 1; r < rows.length; r++){
       const row = rows[r] || [];
 
-      // vyzobni pouze mapované sloupce → kompaktní řádek
       const picked = CARTEC_FIELDS.map(f => {
         const idx = colMap[f.key];
         return idx === undefined ? "" : cleanCellString(row[idx]);
       });
 
       if(isRowEmpty(picked)) continue;
-
-      // stop marker – pokud je v jakémkoli ze sebraných polí
       if(rowHasStopMarker(picked)) break;
 
       out.push(toDelimitedRow(picked, ";"));
@@ -899,7 +880,6 @@
       if(cfg?.excel_mode === "cartec_map"){
         return rowsToCartecMappedCsv(rows);
       }
-      // SIMPLE
       return rowsToSimpleCsv(rows);
     }
 
@@ -929,13 +909,10 @@
 
     const ext = extOf(file.name);
 
-    // CSV: použij head+marker
-    // XLSX/XLS/ISDOC: už generujeme "čisté CSV"; u Cartec je už ořez podle tabulky a stop markerů
     let cleaned;
     if(ext === "csv"){
       cleaned = cleanCsvText(text, headN, marker);
     } else if((ext === "xlsx" || ext === "xls") && cfg?.excel_mode !== "cartec_map"){
-      // u SIMPLE excelu je možné ještě použít marker pro dořez, ale default necháváme beze změny
       cleaned = text;
     } else {
       cleaned = text;
