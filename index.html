@@ -470,7 +470,7 @@
       <div id="msg" class="ok"></div>
 
       <div class="footer">
-        CSV Cleaner · verze 1.4 · 2026 · vytvořeno uživateli pro uživatele
+        CSV Cleaner · verze 1.5 · 2026 · vytvořeno uživateli pro uživatele
       </div>
     </div>
   </div>
@@ -549,9 +549,9 @@
     },
     CARTEC: {
       head: 50,
-      marker: "Celkem zboží|Celkem CZK|Rekapitulace DPH",
+      marker: "Celkem zboží|Celkem CZK|Rekapitulace DPH|Total|VAT",
       logo: "",
-      excel_mode: "table" // ✅ pro Cartec: najít tabulku v XLSX a vyříznout ji
+      excel_mode: "cartec_map" // ✅ robustní mapování rozhozených sloupců podle hlaviček
     }
   };
 
@@ -622,7 +622,7 @@
     return i === -1 ? "" : name.slice(i+1).toLowerCase();
   }
 
-  // ===== CSV helpers (Excel CZ) =====
+  // ===== CSV helpers (Excel friendly) =====
   function csvEscape(cell, sep){
     let s = (cell ?? "").toString();
     s = s.replace(/\r?\n/g, " ");
@@ -637,6 +637,7 @@
     return arr.map(v => csvEscape(v, sep)).join(sep);
   }
 
+  // ✅ UTF-8 + BOM: Excel na Windows spolehlivě načte diakritiku (EN/CZ Excel je jedno)
   function downloadCsvUtf8Bom(text, filename){
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + text], { type:"text/csv;charset=utf-8" });
@@ -652,10 +653,10 @@
   function cleanCellString(v){
     let s = (v ?? "").toString();
 
-    // odstranit currency symboly, které Excel/SheetJS někdy přidá
+    // měnové symboly / bordel z formátování
     s = s.replace(/\$/g, "");
 
-    // sjednotit NBSP a vícenásobné mezery
+    // NBSP a vícenásobné mezery
     s = s.replace(/\u00A0/g, " ");
     s = s.replace(/[ \t]+/g, " ").trim();
 
@@ -669,119 +670,162 @@
     return true;
   }
 
-  function rowIncludesAll(row, needles){
-    const joined = row.map(cleanCellString).join(" | ").toLowerCase();
-    return needles.every(n => joined.includes(n.toLowerCase()));
+  // ===== Robust header detection (CZ/EN, tolerantní) =====
+  function stripDiacritics(s){
+    // funguje v moderních prohlížečích
+    return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
-  function findTableWindow(rows){
-    // hlavička Cartec tabulky
-    const headerNeedles = ["číslo","popis","množ","mj","jedn","dpH","částka"];
+  function normKey(s){
+    // malá písmena, bez diakritiky, bez teček a bez extra znaků
+    const t = stripDiacritics((s || "").toLowerCase());
+    return t
+      .replace(/\./g, " ")
+      .replace(/[%]/g, " percent ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
 
-    let headerRow = -1;
-    for(let i=0;i<rows.length;i++){
-      const r = rows[i] || [];
-      if(rowIncludesAll(r, ["číslo","popis"]) && rowIncludesAll(r, ["částka"]) && rowIncludesAll(r, ["dph"])){
-        headerRow = i;
-        break;
-      }
-    }
+  // Canonical fields, které chceme ve výstupu pro Cartec
+  const CARTEC_FIELDS = [
+    { key:"number",    label:"Číslo"     },
+    { key:"desc",      label:"Popis"     },
+    { key:"qty",       label:"Množ."     },
+    { key:"mj",        label:"MJ"        },
+    { key:"unitprice", label:"Jedn. cena"},
+    { key:"discount",  label:"% slevy"   },
+    { key:"vat",       label:"DPH %"     },
+    { key:"amount",    label:"Částka"    },
+  ];
 
-    if(headerRow === -1){
-      // fallback: zkus aspoň "Číslo" + "Popis"
-      for(let i=0;i<rows.length;i++){
-        const r = rows[i] || [];
-        if(rowIncludesAll(r, ["číslo","popis"])){
-          headerRow = i;
-          break;
+  // Synonyma pro detekci hlaviček (CZ + EN + varianty)
+  const CARTEC_SYNONYMS = {
+    number:    ["cislo","cisl o","item number","item no","number","code","part number","part no","article","artikl","produkt","product code"],
+    desc:      ["popis","nazev","polozka","item","description","desc","product","goods","name"],
+    qty:       ["mnoz","mnozstvi","mnoz ","qty","quantity","count","pcs","pieces","amount qty"],
+    mj:        ["mj","merna jednotka","unit","uom","unit of measure","measure unit"],
+    unitprice: ["jedn cena","jednotkova cena","unit price","price","unitprice","price per unit"],
+    discount:  ["sleva","percent sleva","% sleva","discount","disc","rebate","% discount"],
+    vat:       ["dph","dph percent","vat","vat percent","tax","tax percent","vat rate"],
+    amount:    ["castka","celkem","total","line total","amount","sum","line amount","price total"]
+  };
+
+  // Stop markers (CZ/EN)
+  const CARTEC_STOP_MARKERS = [
+    "celkem zbozi", "celkem czk", "rekapitulace dph",
+    "total goods", "vat summary", "tax summary",
+    "total", "grand total"
+  ];
+
+  function findCartecHeaderMapping(rows){
+    // najdi řádek, kde je dost hlaviček pro mapování
+    // povinné minimálně: číslo + popis + částka
+    const required = ["number","desc","amount"];
+
+    for(let r=0; r<rows.length; r++){
+      const row = rows[r] || [];
+      if(isRowEmpty(row)) continue;
+
+      // v rámci řádku udělej mapu "canonicalKey -> colIndex"
+      const map = {};
+      for(let c=0; c<row.length; c++){
+        const cell = cleanCellString(row[c]);
+        if(!cell) continue;
+
+        const nk = normKey(cell);
+
+        // zkus přiřadit k nějakému canonical field
+        for(const field of CARTEC_FIELDS){
+          const syns = CARTEC_SYNONYMS[field.key] || [];
+          // pokud se vejde do některého synonyma (contains), bereme to
+          if(syns.some(s => nk.includes(normKey(s)))){
+            // preferuj první nález; pokud později najdeme "lepší" (přesnější), neřešíme - jednoduché a stabilní
+            if(map[field.key] === undefined) map[field.key] = c;
+          }
         }
       }
-    }
 
-    if(headerRow === -1) return null;
+      const hasRequired = required.every(k => map[k] !== undefined);
+      // musí být ještě aspoň pár dalších, ať netrefíme náhodný text
+      const countFound = Object.keys(map).length;
 
-    const header = rows[headerRow] || [];
-    let startCol = -1;
-    let endCol = -1;
-
-    for(let c=0;c<header.length;c++){
-      if(cleanCellString(header[c]) !== ""){
-        startCol = c;
-        break;
-      }
-    }
-    for(let c=header.length-1;c>=0;c--){
-      if(cleanCellString(header[c]) !== ""){
-        endCol = c;
-        break;
+      if(hasRequired && countFound >= 5){
+        return { headerRow: r, colMap: map };
       }
     }
 
-    if(startCol === -1 || endCol === -1 || endCol < startCol) return null;
-
-    return { headerRow, startCol, endCol };
+    return null;
   }
 
-  async function readExcelAsCzCsv(file, mode){
-    if(!window.XLSX) throw new Error("Chybí XLSX knihovna (SheetJS).");
+  function rowHasStopMarker(rowSlice){
+    const joined = rowSlice.map(cleanCellString).join(" ").toLowerCase();
+    const nk = normKey(joined);
+    return CARTEC_STOP_MARKERS.some(m => nk.includes(normKey(m)));
+  }
 
+  // ===== Excel readers =====
+  async function readExcelRows(file){
+    if(!window.XLSX) throw new Error("Chybí XLSX knihovna (SheetJS).");
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type:"array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
-
-    // načti jako 2D pole (formatted strings)
     const rows = XLSX.utils.sheet_to_json(ws, {
       header: 1,
       raw: false,
       defval: "",
       blankrows: false
     });
-
-    // ✅ režim TABLE: najdi tabulku a vyřízni jen relevantní sloupce/řádky
-    if(mode === "table"){
-      const win = findTableWindow(rows);
-      if(!win){
-        // fallback – aspoň ořez prázdných okrajů
-        return rows
-          .filter(r => !isRowEmpty(r))
-          .map(r => toDelimitedRow(r.map(cleanCellString), ";"))
-          .join("\n") + "\n";
-      }
-
-      const { headerRow, startCol, endCol } = win;
-      const out = [];
-
-      // přidej hlavičku
-      const hdr = (rows[headerRow] || []).slice(startCol, endCol+1).map(cleanCellString);
-      out.push(toDelimitedRow(hdr, ";"));
-
-      // data řádky: dokud nenarazíme na "Celkem zboží" apod.
-      const stopNeedles = ["celkem zboží","celkem czk","rekapitulace dph"];
-
-      for(let i=headerRow+1;i<rows.length;i++){
-        const r = rows[i] || [];
-        const slice = r.slice(startCol, endCol+1).map(cleanCellString);
-
-        if(isRowEmpty(slice)) continue;
-
-        const joined = slice.join(" ").toLowerCase();
-        if(stopNeedles.some(n => joined.includes(n))) break;
-
-        out.push(toDelimitedRow(slice, ";"));
-      }
-
-      return out.join("\n") + "\n";
-    }
-
-    // SIMPLE mode: export celého listu
-    const out2 = rows
-      .filter(r => !isRowEmpty(r))
-      .map(r => toDelimitedRow(r.map(cleanCellString), ";"))
-      .join("\n") + "\n";
-
-    return out2;
+    return rows;
   }
 
+  function rowsToSimpleCsv(rows){
+    // pro SIMPLE: odstraní prázdné řádky a exportuje celý list jako ; CSV
+    const out = rows
+      .filter(r => !isRowEmpty(r || []))
+      .map(r => toDelimitedRow((r || []).map(cleanCellString), ";"))
+      .join("\n") + "\n";
+    return out;
+  }
+
+  function rowsToCartecMappedCsv(rows){
+    const found = findCartecHeaderMapping(rows);
+    if(!found){
+      throw new Error("Cartec: Nepodařilo se najít hlavičku tabulky (Číslo/Popis/Částka…). Dodavatel pravděpodobně změnil šablonu.");
+    }
+
+    const { headerRow, colMap } = found;
+
+    // sestav hlavičku výstupu v pevném pořadí
+    const out = [];
+    out.push(toDelimitedRow(CARTEC_FIELDS.map(f => f.label), ";"));
+
+    // data řádky
+    for(let r = headerRow + 1; r < rows.length; r++){
+      const row = rows[r] || [];
+
+      // vyzobni pouze mapované sloupce → kompaktní řádek
+      const picked = CARTEC_FIELDS.map(f => {
+        const idx = colMap[f.key];
+        return idx === undefined ? "" : cleanCellString(row[idx]);
+      });
+
+      if(isRowEmpty(picked)) continue;
+
+      // stop marker – pokud je v jakémkoli ze sebraných polí
+      if(rowHasStopMarker(picked)) break;
+
+      out.push(toDelimitedRow(picked, ";"));
+    }
+
+    if(out.length <= 1){
+      throw new Error("Cartec: Tabulka byla nalezena, ale nebyly detekovány žádné položky.");
+    }
+
+    return out.join("\n") + "\n";
+  }
+
+  // ===== ISDOC (basic) =====
   function getTextByLocalName(parent, localName){
     const all = parent.getElementsByTagName("*");
     for(const el of all){
@@ -808,7 +852,7 @@
         const desc  = getTextByLocalName(el, "ItemDescription") || getTextByLocalName(el, "Description");
         const qty   = getTextByLocalName(el, "InvoicedQuantity") || getTextByLocalName(el, "Quantity");
         const price = getTextByLocalName(el, "UnitPrice") || getTextByLocalName(el, "Price");
-        const total = getTextByLocalName(el, "LineExtensionAmount") || getTextByLocalName(el, "Total");
+        const total = getTextByLocalName(el, "LineExtensionAmount") || getTextByLocalName(el, "LineTotal") || getTextByLocalName(el, "Total");
         lines.push([invoiceNumber, issueDate, desc, qty, price, total]);
       }
     }
@@ -819,17 +863,7 @@
     return out.join("\n") + "\n";
   }
 
-  async function readInputFileAsText(file){
-    const ext = extOf(file.name);
-    const cfg = VENDORS[ACTIVE_VENDOR];
-
-    if(ext === "csv") return await file.text();
-    if(ext === "xlsx" || ext === "xls") return await readExcelAsCzCsv(file, cfg?.excel_mode || "simple");
-    if(ext === "isdoc") return await readIsdocAsCzCsv(file);
-
-    throw new Error("Nepodporovaný typ souboru: " + ext);
-  }
-
+  // ===== CSV cleaning =====
   function parseMarkerList(markerText){
     return (markerText || "")
       .split("|")
@@ -837,10 +871,8 @@
       .filter(Boolean);
   }
 
-  function cleanOneText(text, removeTopN, markerText){
+  function cleanCsvText(text, removeTopN, markerText){
     let lines = normalizeLines(text);
-
-    // u CSV čistíme klasicky "head + marker"
     lines = lines.slice(Math.max(0, removeTopN));
 
     const markers = parseMarkerList(markerText);
@@ -856,9 +888,33 @@
     return lines.join("\n") + "\n";
   }
 
+  async function readInputFileAsText(file){
+    const ext = extOf(file.name);
+    const cfg = VENDORS[ACTIVE_VENDOR];
+
+    if(ext === "csv") return await file.text();
+
+    if(ext === "xlsx" || ext === "xls"){
+      const rows = await readExcelRows(file);
+      if(cfg?.excel_mode === "cartec_map"){
+        return rowsToCartecMappedCsv(rows);
+      }
+      // SIMPLE
+      return rowsToSimpleCsv(rows);
+    }
+
+    if(ext === "isdoc"){
+      return await readIsdocAsCzCsv(file);
+    }
+
+    throw new Error("Nepodporovaný typ souboru: " + ext);
+  }
+
   runBtn.addEventListener("click", async () => {
     const file = (fileEl.files && fileEl.files[0]) ? fileEl.files[0] : null;
     if(!file) return;
+
+    const cfg = VENDORS[ACTIVE_VENDOR];
 
     const headN = Math.max(0, parseInt(headEl.value || "0", 10));
     const marker = (markerEl.value || "").trim();
@@ -872,21 +928,24 @@
     }
 
     const ext = extOf(file.name);
-    const cfg = VENDORS[ACTIVE_VENDOR];
 
-    // pokud je vstup XLSX/XLS/ISDOC, už je to CSV text; pro Cartec XLSX navíc už je vyříznutá tabulka
-    // ale pořád můžeš chtít dořezat "top + marker" (např. když někdo nahraje už CSV)
-    const cleaned = (ext === "csv")
-      ? cleanOneText(text, headN, marker)
-      : (cfg?.excel_mode === "table" ? text : cleanOneText(text, 0, "")); // u SIMPLE excelu už jsme odstranili prázdné řádky
+    // CSV: použij head+marker
+    // XLSX/XLS/ISDOC: už generujeme "čisté CSV"; u Cartec je už ořez podle tabulky a stop markerů
+    let cleaned;
+    if(ext === "csv"){
+      cleaned = cleanCsvText(text, headN, marker);
+    } else if((ext === "xlsx" || ext === "xls") && cfg?.excel_mode !== "cartec_map"){
+      // u SIMPLE excelu je možné ještě použít marker pro dořez, ale default necháváme beze změny
+      cleaned = text;
+    } else {
+      cleaned = text;
+    }
 
     const outName = (ext === "csv")
       ? file.name
       : file.name.replace(/\.[^.]+$/, "") + ".csv";
 
-    // ✅ ukládej UTF-8 s BOM (Excel CZ diakritika)
     downloadCsvUtf8Bom(cleaned, outName);
-
     msg.innerHTML = `Hotovo: <code>${outName}</code>`;
   });
 </script>
