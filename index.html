@@ -492,13 +492,13 @@
       <div id="msg" class="ok"></div>
 
       <div class="footer">
-        CSV Cleaner · verze 2.0 · 2026 · vytvořeno uživateli pro uživatele
+        CSV Cleaner · verze 2.1 · 2026 · vytvořeno uživateli pro uživatele
       </div>
     </div>
   </div>
 
 <script>
-  // ===== THEME (zachováno) =====
+  // ===== THEME =====
   const themeBtn = document.getElementById("themeBtn");
 
   function getSystemTheme(){
@@ -568,7 +568,6 @@
 
   const msg = document.getElementById("msg");
 
-  // Vendor presets
   const VENDORS = {
     LKQ: { head: 16, marker: "Sazba DPH", logo: "logos/lkq.png", excel_mode: "simple", kind: "standard" },
     SAG: { head: 16, marker: "Sazba DPH", logo: "logos/sag.png", excel_mode: "simple", kind: "standard" },
@@ -692,7 +691,6 @@
     return arr.map(v => csvEscape(v, sep)).join(sep);
   }
 
-  // UTF-8 + BOM (kvůli Excelu)
   function downloadCsvUtf8Bom(text, filename){
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + text], { type:"text/csv;charset=utf-8" });
@@ -720,7 +718,7 @@
     return true;
   }
 
-  // ===== CARTEC mapping (CZ/EN robust) =====
+  // ===== CARTEC mapping =====
   function stripDiacritics(s){
     return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
@@ -881,7 +879,7 @@
     return lines.join("\n") + "\n";
   }
 
-  // ===== ISDOC → CSV (CZ sloupce pro zboží) =====
+  // ===== ISDOC → CSV (zboží pouze, bez čísla dokladu a data) =====
   function firstChildByLocalName(parent, localName){
     const nodes = parent.getElementsByTagName("*");
     for(const el of nodes){
@@ -902,6 +900,13 @@
     return (v || "").trim();
   }
 
+  function excelText(value){
+    // Excel anti-scientific-notation: prefix apostrophe
+    const s = cleanCellString(value);
+    if(!s) return "";
+    return "'" + s;
+  }
+
   async function isdocToCsvCz(file){
     const xmlText = await file.text();
     const doc = new DOMParser().parseFromString(xmlText, "application/xml");
@@ -909,9 +914,7 @@
       throw new Error("ISDOC není validní XML.");
     }
 
-    const invoiceId  = textByLocalName(doc, "ID");
-    const issueDate  = textByLocalName(doc, "IssueDate");
-    const currency   = textByLocalName(doc, "LocalCurrencyCode") || "CZK";
+    const currency = textByLocalName(doc, "LocalCurrencyCode") || "CZK";
 
     const lines = [];
     const all = doc.getElementsByTagName("*");
@@ -924,9 +927,7 @@
       const unitCode = attrOfLocalName(el, "InvoicedQuantity", "unitCode"); // ks
       const unitPrice = textByLocalName(el, "UnitPrice");
 
-      // vezme první Percent uvnitř řádku (typicky v ClassifiedTaxCategory)
       const vatPercent = textByLocalName(el, "Percent");
-
       const base = textByLocalName(el, "LineExtensionAmount");
       const vatAmount = textByLocalName(el, "LineExtensionTaxAmount");
       const total = textByLocalName(el, "LineExtensionAmountTaxInclusive");
@@ -943,10 +944,8 @@
       if(!cleanCellString(desc) && !cleanCellString(ean) && !cleanCellString(sellerId)) continue;
 
       lines.push([
-        invoiceId,
-        issueDate,
-        ean,
-        sellerId,
+        excelText(ean),                 // EAN as TEXT
+        excelText(sellerId),            // also keep as text
         desc,
         cleanCellString(qty),
         unitCode || "",
@@ -963,8 +962,6 @@
     }
 
     const header = [
-      "Číslo dokladu",
-      "Datum vystavení",
       "EAN",
       "Kód zboží",
       "Popis",
@@ -982,7 +979,6 @@
     return out.join("\n") + "\n";
   }
 
-  // ===== Standard read =====
   async function readInputFileAsTextStandard(file){
     const ext = extOf(file.name);
     const cfg = VENDORS[ACTIVE_VENDOR];
