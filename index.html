@@ -407,13 +407,15 @@
           </span>
         </button>
 
-        <button id="btnCartec" class="vendorBtn" type="button" aria-label="Cartec">
+        <!-- ✅ ZMĚNA: Cartec -> CarTec Group + logo -->
+        <button id="btnCartec" class="vendorBtn" type="button" aria-label="CarTec Group">
           <span class="vendorLogo">
-            <span class="fallback" style="display:block;">CAR</span>
+            <img id="logoCARTEC" src="logos/cartec.png" alt="CarTec Group logo" loading="eager">
+            <span class="fallback">CarTec</span>
           </span>
           <span class="vendorText">
-            <span class="vendorName">Cartec</span>
-            <span class="vendorHint">Dodací listy/Faktury Cartec</span>
+            <span class="vendorName">CarTec Group</span>
+            <span class="vendorHint">Dodací listy/Faktury CarTec Group</span>
           </span>
         </button>
 
@@ -491,7 +493,7 @@
       <div id="msg" class="ok"></div>
 
       <div class="footer">
-        CSV Cleaner · verze 1.9 · 2026 · vytvořeno uživateli pro uživatele
+        CSV Cleaner · verze 2.0 · 2026 · vytvořeno uživateli pro uživatele
       </div>
     </div>
   </div>
@@ -534,6 +536,7 @@
   wireLogoFallback("logoLKQ");
   wireLogoFallback("logoSAG");
   wireLogoFallback("logoISDOC");
+  wireLogoFallback("logoCARTEC");
 
   // ===== VIEW SWITCH =====
   const introCard = document.getElementById("introCard");
@@ -579,7 +582,7 @@
     CARTEC: {
       head: 50,
       marker: "Celkem zboží|Celkem CZK|Rekapitulace DPH|Total|VAT",
-      logo: "",
+      logo: "logos/cartec.png",
       excel_mode: "cartec_map",
       mode: "standard"
     },
@@ -598,14 +601,14 @@
     ACTIVE_VENDOR = v;
     const cfg = VENDORS[v];
 
-    vendorNameEl.textContent = v;
-    vendorMiniFallback.textContent = v;
+    // Jméno ve badge
+    vendorNameEl.textContent = (v === "CARTEC") ? "CarTec Group" : v;
+    vendorMiniFallback.textContent = (v === "CARTEC") ? "CarTec" : v;
 
     if(cfg.logo){
       vendorMiniLogo.style.display = "block";
       vendorMiniLogo.src = cfg.logo;
       vendorMiniLogo.classList.toggle("invertOnDark", v === "ISDOC");
-
       vendorMiniLogo.onerror = () => {
         vendorMiniLogo.style.display = "none";
         vendorMiniFallback.style.display = "block";
@@ -951,7 +954,6 @@
         cleanCellString(total)
       ];
 
-      // zahodit prázdné řádky
       if(isRowEmpty(row)) continue;
 
       out.push(toDelimitedRow(row, ";"));
@@ -1004,7 +1006,6 @@
     }
 
     if(ext === "isdoc"){
-      // ISDOC mode: přesná extrakce položek podle XML
       return await readIsdocAsItemsCsv(file);
     }
 
@@ -1032,7 +1033,7 @@
 
     let cleaned;
     if(cfg.mode === "isdoc"){
-      cleaned = text; // u ISDOC už je to finální CSV
+      cleaned = text;
     } else if(ext === "csv"){
       cleaned = cleanCsvText(text, headN, marker);
     } else {
