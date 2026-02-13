@@ -194,11 +194,19 @@
     .vendorLogo .fallback{
       font-size:12px;
       color:var(--muted);
-      font-weight:700;
+      font-weight:600;
       display:none;
       padding:0 6px;
       text-align:center;
       line-height:1.1;
+    }
+
+    /* Pokud nemáš černé logo, v tmavém režimu ho „suplujeme“ filtrem */
+    html[data-theme="dark"] .invertOnDark,
+    @media (prefers-color-scheme: dark){
+      html:not([data-theme="light"]) .invertOnDark{
+        filter: invert(1) hue-rotate(180deg) contrast(1.2) saturate(1.1);
+      }
     }
 
     .vendorText{
@@ -218,6 +226,56 @@
       font-size:13px;
       color:var(--muted);
       line-height:1.2;
+    }
+
+    .controls{
+      display:grid;
+      gap:12px;
+      align-items:end;
+      margin-top:6px;
+    }
+    .controls > *{ width:100% }
+
+    @media (min-width:860px){
+      .controls{
+        grid-template-columns: 1.35fr 1fr 1fr auto;
+      }
+      .controls > *{ width:auto }
+      .controls label{ min-width: 210px; }
+    }
+
+    .controls.isdoc{
+      grid-template-columns: 1.35fr auto;
+    }
+    @media (min-width:860px){
+      .controls.isdoc{
+        grid-template-columns: 1.35fr auto;
+      }
+    }
+
+    label{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      font-size:14px;
+      color:var(--text);
+      line-height:1.2;
+    }
+
+    input[type="file"]{
+      padding:8px;
+      color:var(--text);
+      background:transparent;
+    }
+
+    input[type="number"],
+    input[type="text"]{
+      padding:10px 10px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:var(--input-bg);
+      color:var(--text);
+      height:40px;
     }
 
     .badgeRow{
@@ -261,65 +319,12 @@
     .vendorBadge .miniLogo .fallback{
       font-size:11px;
       color:var(--muted);
-      font-weight:800;
+      font-weight:700;
       display:none;
-      padding:0 4px;
-      text-align:center;
-      line-height:1.1;
     }
 
     .vendorBadge strong{
       font-size:14px;
-    }
-
-    .controls{
-      display:grid;
-      gap:12px;
-      align-items:end;
-      margin-top:6px;
-    }
-    .controls > *{ width:100% }
-
-    @media (min-width:860px){
-      .controls{
-        grid-template-columns: 1.35fr 1fr 1fr auto;
-      }
-      .controls > *{ width:auto }
-      .controls label{ min-width: 210px; }
-    }
-
-    .controls.isdoc{
-      grid-template-columns: 1.65fr auto;
-    }
-    @media (min-width:860px){
-      .controls.isdoc{
-        grid-template-columns: 1.65fr auto;
-      }
-    }
-
-    label{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      font-size:14px;
-      color:var(--text);
-      line-height:1.2;
-    }
-
-    input[type="file"]{
-      padding:8px;
-      color:var(--text);
-      background:transparent;
-    }
-
-    input[type="number"],
-    input[type="text"]{
-      padding:10px 10px;
-      border:1px solid var(--border);
-      border-radius:12px;
-      background:var(--input-bg);
-      color:var(--text);
-      height:40px;
     }
 
     .meta{
@@ -414,7 +419,7 @@
 
         <button id="btnISDOC" class="vendorBtn" type="button" aria-label="ISDOC">
           <span class="vendorLogo">
-            <img id="logoISDOC" src="logos/isdoc.png" alt="ISDOC logo" loading="eager">
+            <img id="logoISDOC" class="invertOnDark" src="logos/isdoc.png" alt="ISDOC logo" loading="eager">
             <span class="fallback">ISDOC</span>
           </span>
           <span class="vendorText">
@@ -445,31 +450,25 @@
       <button id="backBtn" class="backBtn" type="button">Změnit dodavatele</button>
     </div>
 
-    <!-- Kontroly pro LKQ/SAG/CARTEC -->
-    <div id="controlsStandard" class="controls">
-      <input id="fileStandard" type="file" accept=".csv,text/csv,.xlsx,.xls">
+    <div id="controls" class="controls">
+      <input id="file" type="file"
+             accept=".csv,text/csv,.xlsx,.xls,.isdoc,application/xml,text/xml">
 
-      <label>
+      <label id="headWrap">
         Odebrat řádky 1 až
         <input id="head" type="number" value="16" min="0">
       </label>
 
-      <label>
+      <label id="markerWrap">
         Odebrat od textu
         <input id="marker" type="text" value="Sazba DPH">
       </label>
 
-      <button id="runStandard" disabled>Promazat a stáhnout</button>
-    </div>
-
-    <!-- Kontroly pro ISDOC (bez head/marker) -->
-    <div id="controlsIsdoc" class="controls isdoc hidden">
-      <input id="fileIsdoc" type="file" accept=".isdoc,application/xml,text/xml">
-      <button id="runIsdoc" disabled>Převést a stáhnout</button>
+      <button id="run" disabled>Promazat a stáhnout</button>
     </div>
 
     <div class="meta">
-      <small id="vendorHelp">
+      <small id="metaInfo">
         Nástroj je určen pro <b>dodací listy / faktury vybraného dodavatele</b>.
       </small>
 
@@ -492,7 +491,7 @@
       <div id="msg" class="ok"></div>
 
       <div class="footer">
-        CSV Cleaner · verze 2.1 · 2026 · vytvořeno uživateli pro uživatele
+        CSV Cleaner · verze 1.9 · 2026 · vytvořeno uživateli pro uživatele
       </div>
     </div>
   </div>
@@ -504,17 +503,14 @@
   function getSystemTheme(){
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
-
   function applyTheme(t){
     if(!t){
       document.documentElement.removeAttribute("data-theme");
     }else{
       document.documentElement.setAttribute("data-theme", t);
     }
-    const effective = (t || getSystemTheme());
-    themeBtn.textContent = effective === "dark" ? "Světlý režim" : "Tmavý režim";
+    themeBtn.textContent = (t || getSystemTheme()) === "dark" ? "Světlý režim" : "Tmavý režim";
   }
-
   applyTheme(localStorage.getItem("theme"));
 
   themeBtn.addEventListener("click", () => {
@@ -552,88 +548,91 @@
   const vendorNameEl = document.getElementById("vendorName");
   const vendorMiniLogo = document.getElementById("vendorMiniLogo");
   const vendorMiniFallback = document.getElementById("vendorMiniFallback");
-  const vendorHelp = document.getElementById("vendorHelp");
 
-  // ===== Standard controls =====
-  const controlsStandard = document.getElementById("controlsStandard");
-  const fileStandard = document.getElementById("fileStandard");
-  const runStandard = document.getElementById("runStandard");
+  // ===== APP ELEMENTS =====
+  const fileEl = document.getElementById("file");
+  const runBtn = document.getElementById("run");
+  const msg = document.getElementById("msg");
   const headEl = document.getElementById("head");
   const markerEl = document.getElementById("marker");
+  const headWrap = document.getElementById("headWrap");
+  const markerWrap = document.getElementById("markerWrap");
+  const controls = document.getElementById("controls");
+  const metaInfo = document.getElementById("metaInfo");
 
-  // ===== ISDOC controls =====
-  const controlsIsdoc = document.getElementById("controlsIsdoc");
-  const fileIsdoc = document.getElementById("fileIsdoc");
-  const runIsdoc = document.getElementById("runIsdoc");
-
-  const msg = document.getElementById("msg");
-
+  // Vendor presets
   const VENDORS = {
-    LKQ: { head: 16, marker: "Sazba DPH", logo: "logos/lkq.png", excel_mode: "simple", kind: "standard" },
-    SAG: { head: 16, marker: "Sazba DPH", logo: "logos/sag.png", excel_mode: "simple", kind: "standard" },
+    LKQ: {
+      head: 16,
+      marker: "Sazba DPH",
+      logo: "logos/lkq.png",
+      excel_mode: "simple",
+      mode: "standard"
+    },
+    SAG: {
+      head: 16,
+      marker: "Sazba DPH",
+      logo: "logos/sag.png",
+      excel_mode: "simple",
+      mode: "standard"
+    },
     CARTEC: {
       head: 50,
       marker: "Celkem zboží|Celkem CZK|Rekapitulace DPH|Total|VAT",
       logo: "",
       excel_mode: "cartec_map",
-      kind: "standard"
+      mode: "standard"
     },
-    ISDOC: { head: 0, marker: "", logo: "logos/isdoc.png", excel_mode: "none", kind: "isdoc" }
+    ISDOC: {
+      head: 0,
+      marker: "",
+      logo: "logos/isdoc.png",
+      excel_mode: "none",
+      mode: "isdoc"
+    }
   };
 
   let ACTIVE_VENDOR = "LKQ";
-
-  function setMiniLogo(cfg, vendorKey){
-    vendorMiniFallback.textContent = vendorKey;
-    vendorMiniLogo.style.display = "block";
-    vendorMiniLogo.src = cfg.logo || "";
-    vendorMiniFallback.style.display = "none";
-
-    if(!cfg.logo){
-      vendorMiniLogo.style.display = "none";
-      vendorMiniFallback.style.display = "block";
-      return;
-    }
-
-    vendorMiniLogo.onerror = () => {
-      vendorMiniLogo.style.display = "none";
-      vendorMiniFallback.style.display = "block";
-    };
-  }
 
   function setVendor(v){
     ACTIVE_VENDOR = v;
     const cfg = VENDORS[v];
 
     vendorNameEl.textContent = v;
-    setMiniLogo(cfg, v);
+    vendorMiniFallback.textContent = v;
 
-    msg.textContent = "";
+    if(cfg.logo){
+      vendorMiniLogo.style.display = "block";
+      vendorMiniLogo.src = cfg.logo;
+      vendorMiniLogo.classList.toggle("invertOnDark", v === "ISDOC");
 
-    if(cfg.kind === "isdoc"){
-      controlsStandard.classList.add("hidden");
-      controlsIsdoc.classList.remove("hidden");
-      vendorHelp.innerHTML = 'Režim <b>ISDOC</b>: převod faktury (.isdoc) na CSV podle XML (položky zboží).';
-
-      fileStandard.value = "";
-      runStandard.disabled = true;
-
-      fileIsdoc.value = "";
-      runIsdoc.disabled = true;
+      vendorMiniLogo.onerror = () => {
+        vendorMiniLogo.style.display = "none";
+        vendorMiniFallback.style.display = "block";
+      };
+      vendorMiniFallback.style.display = "none";
     } else {
-      controlsIsdoc.classList.add("hidden");
-      controlsStandard.classList.remove("hidden");
-      vendorHelp.innerHTML = 'Nástroj je určen pro <b>dodací listy / faktury vybraného dodavatele</b>.';
-
-      headEl.value = String(cfg.head);
-      markerEl.value = cfg.marker;
-
-      fileIsdoc.value = "";
-      runIsdoc.disabled = true;
-
-      fileStandard.value = "";
-      runStandard.disabled = true;
+      vendorMiniLogo.style.display = "none";
+      vendorMiniFallback.style.display = "block";
     }
+
+    headEl.value = String(cfg.head);
+    markerEl.value = cfg.marker;
+
+    // ISDOC: zjednodušené ovládání (bez mazání řádků / markerů)
+    const isIsdoc = cfg.mode === "isdoc";
+    headWrap.classList.toggle("hidden", isIsdoc);
+    markerWrap.classList.toggle("hidden", isIsdoc);
+    controls.classList.toggle("isdoc", isIsdoc);
+    metaInfo.innerHTML = isIsdoc
+      ? "ISDOC: výstup je <b>věrně podle XML</b> a obsahuje jen <b>položky zboží</b>."
+      : "Nástroj je určen pro <b>dodací listy / faktury vybraného dodavatele</b>.";
+
+    runBtn.textContent = isIsdoc ? "Převést a stáhnout" : "Promazat a stáhnout";
+
+    fileEl.value = "";
+    runBtn.disabled = true;
+    msg.textContent = "";
   }
 
   function showApp(){
@@ -645,10 +644,8 @@
     appCard.classList.add("hidden");
     introCard.classList.remove("hidden");
     msg.textContent = "";
-    fileStandard.value = "";
-    fileIsdoc.value = "";
-    runStandard.disabled = true;
-    runIsdoc.disabled = true;
+    fileEl.value = "";
+    runBtn.disabled = true;
   }
 
   btnLKQ.addEventListener("click", () => { setVendor("LKQ"); showApp(); });
@@ -657,13 +654,9 @@
   btnISDOC.addEventListener("click", () => { setVendor("ISDOC"); showApp(); });
   backBtn.addEventListener("click", () => { showIntro(); });
 
-  fileStandard.addEventListener("change", () => {
-    runStandard.disabled = !(fileStandard.files && fileStandard.files.length === 1);
-    msg.textContent = "";
-  });
-
-  fileIsdoc.addEventListener("change", () => {
-    runIsdoc.disabled = !(fileIsdoc.files && fileIsdoc.files.length === 1);
+  // ===== FILE HANDLING (1 file only) =====
+  fileEl.addEventListener("change", () => {
+    runBtn.disabled = !(fileEl.files && fileEl.files.length === 1);
     msg.textContent = "";
   });
 
@@ -691,6 +684,7 @@
     return arr.map(v => csvEscape(v, sep)).join(sep);
   }
 
+  // UTF-8 + BOM (Excel-friendly)
   function downloadCsvUtf8Bom(text, filename){
     const BOM = "\uFEFF";
     const blob = new Blob([BOM + text], { type:"text/csv;charset=utf-8" });
@@ -718,7 +712,7 @@
     return true;
   }
 
-  // ===== CARTEC mapping =====
+  // ===== Robust header detection (CZ/EN) for CARTEC =====
   function stripDiacritics(s){
     return (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
@@ -734,23 +728,23 @@
   }
 
   const CARTEC_FIELDS = [
-    { key:"number",    label:"Číslo"     },
-    { key:"desc",      label:"Popis"     },
-    { key:"qty",       label:"Množ."     },
-    { key:"mj",        label:"MJ"        },
-    { key:"unitprice", label:"Jedn. cena"},
-    { key:"discount",  label:"% slevy"   },
-    { key:"vat",       label:"DPH %"     },
-    { key:"amount",    label:"Částka"    },
+    { key:"number",    label:"Číslo"      },
+    { key:"desc",      label:"Popis"      },
+    { key:"qty",       label:"Množ."      },
+    { key:"mj",        label:"MJ"         },
+    { key:"unitprice", label:"Jedn. cena" },
+    { key:"discount",  label:"% slevy"    },
+    { key:"vat",       label:"DPH %"      },
+    { key:"amount",    label:"Částka"     },
   ];
 
   const CARTEC_SYNONYMS = {
-    number:    ["cislo","item number","item no","number","code","part number","part no","article","product code"],
+    number:    ["cislo","item number","item no","number","code","part number","part no","article","artikl","produkt","product code"],
     desc:      ["popis","nazev","polozka","item","description","desc","product","goods","name"],
     qty:       ["mnoz","mnozstvi","qty","quantity","count","pcs","pieces"],
-    mj:        ["mj","merna jednotka","unit","uom","unit of measure"],
+    mj:        ["mj","merna jednotka","unit","uom","unit of measure","measure unit"],
     unitprice: ["jedn cena","jednotkova cena","unit price","unitprice","price per unit","price"],
-    discount:  ["sleva","slevy","slev","% sleva","% slevy","discount","% discount","rebate"],
+    discount:  ["sleva","slevy","slev","% sleva","% slevy","discount","disc","rebate","% discount"],
     vat:       ["dph","dph percent","vat","vat percent","tax","tax percent","vat rate"],
     amount:    ["castka","celkem","total","line total","amount","sum","line amount","price total"]
   };
@@ -758,12 +752,11 @@
   const CARTEC_STOP_MARKERS = [
     "celkem zbozi", "celkem czk", "rekapitulace dph",
     "total goods", "vat summary", "tax summary",
-    "grand total"
+    "total", "grand total"
   ];
 
   function findCartecHeaderMapping(rows){
     const required = ["number","desc","amount"];
-
     for(let r=0; r<rows.length; r++){
       const row = rows[r] || [];
       if(isRowEmpty(row)) continue;
@@ -774,7 +767,6 @@
         if(!cell) continue;
 
         const nk = normKey(cell);
-
         for(const field of CARTEC_FIELDS){
           const syns = CARTEC_SYNONYMS[field.key] || [];
           if(syns.some(s => nk.includes(normKey(s)))){
@@ -785,7 +777,6 @@
 
       const hasRequired = required.every(k => map[k] !== undefined);
       const countFound = Object.keys(map).length;
-
       if(hasRequired && countFound >= 5){
         return { headerRow: r, colMap: map };
       }
@@ -854,6 +845,125 @@
     return out.join("\n") + "\n";
   }
 
+  // ===== ISDOC =====
+  function getFirstByLocalName(parent, localName){
+    const all = parent.getElementsByTagName("*");
+    for(const el of all){
+      if((el.localName || el.nodeName) === localName) return el;
+    }
+    return null;
+  }
+
+  function getTextByLocalName(parent, localName){
+    const el = getFirstByLocalName(parent, localName);
+    return el ? (el.textContent || "").trim() : "";
+  }
+
+  // Excel: aby EAN neskákal do vědeckého zápisu, bez apostrofu:
+  // dáme do buňky vzorec ="8807...." (Excel to zobrazí jako text)
+  function excelTextLiteral(s){
+    const t = (s ?? "").toString().trim();
+    if(!t) return "";
+    return '="' + t.replace(/"/g, '""') + '"';
+  }
+
+  function getAttrByLocalName(el, attrName){
+    if(!el || !el.getAttribute) return "";
+    const v = el.getAttribute(attrName);
+    return (v ?? "").toString();
+  }
+
+  async function readIsdocAsItemsCsv(file){
+    const xmlText = await file.text();
+    const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+    if(doc.getElementsByTagName("parsererror").length){
+      throw new Error("ISDOC není validní XML.");
+    }
+
+    // Najdi všechny InvoiceLine (ISDOC 6.x)
+    const nodes = [];
+    const all = doc.getElementsByTagName("*");
+    for(const el of all){
+      const ln = el.localName || el.nodeName;
+      if(ln === "InvoiceLine") nodes.push(el);
+    }
+
+    const header = [
+      "EAN",
+      "1. dle prodejce",
+      "Popis",
+      "Množství",
+      "MJ",
+      "Jedn. cena",
+      "Sazba DPH",
+      "Základ v CZK",
+      "DPH v CZK",
+      "Celkem v CZK"
+    ];
+
+    const out = [toDelimitedRow(header, ";")];
+
+    for(const line of nodes){
+      // qty + unit
+      const qtyEl = getFirstByLocalName(line, "InvoicedQuantity");
+      const qty = qtyEl ? (qtyEl.textContent || "").trim() : "";
+      const unit = qtyEl ? (getAttrByLocalName(qtyEl, "unitCode") || "").trim() : "";
+
+      // item block
+      const itemEl = getFirstByLocalName(line, "Item");
+      const desc = itemEl ? getTextByLocalName(itemEl, "Description") : "";
+
+      // EAN = CatalogueItemIdentification/ID
+      let ean = "";
+      if(itemEl){
+        const cat = getFirstByLocalName(itemEl, "CatalogueItemIdentification");
+        if(cat) ean = getTextByLocalName(cat, "ID");
+      }
+
+      // 1. dle prodejce = SellersItemIdentification/ID
+      let sellerCode = "";
+      if(itemEl){
+        const sellers = getFirstByLocalName(itemEl, "SellersItemIdentification");
+        if(sellers) sellerCode = getTextByLocalName(sellers, "ID");
+      }
+
+      // VAT percent
+      let vat = "";
+      const taxCat = getFirstByLocalName(line, "ClassifiedTaxCategory");
+      if(taxCat) vat = getTextByLocalName(taxCat, "Percent");
+
+      // prices/amounts (podle tvého XML)
+      const unitPrice = getTextByLocalName(line, "UnitPrice");
+      const base = getTextByLocalName(line, "LineExtensionAmount");                 // základ bez DPH
+      const tax = getTextByLocalName(line, "LineExtensionTaxAmount");               // DPH částka
+      const total = getTextByLocalName(line, "LineExtensionAmountTaxInclusive");    // celkem s DPH
+
+      const row = [
+        excelTextLiteral(ean),         // EAN jako text, bez apostrofu
+        cleanCellString(sellerCode),   // 1. dle prodejce (může být prázdné)
+        cleanCellString(desc),
+        cleanCellString(qty),
+        cleanCellString(unit),
+        cleanCellString(unitPrice),
+        cleanCellString(vat),
+        cleanCellString(base),
+        cleanCellString(tax),
+        cleanCellString(total)
+      ];
+
+      // zahodit prázdné řádky
+      if(isRowEmpty(row)) continue;
+
+      out.push(toDelimitedRow(row, ";"));
+    }
+
+    if(out.length <= 1){
+      throw new Error("ISDOC: Nenašel jsem žádné položky (InvoiceLine).");
+    }
+
+    return out.join("\n") + "\n";
+  }
+
   // ===== CSV cleaning =====
   function parseMarkerList(markerText){
     return (markerText || "")
@@ -879,107 +989,7 @@
     return lines.join("\n") + "\n";
   }
 
-  // ===== ISDOC → CSV (zboží pouze, bez čísla dokladu a data) =====
-  function firstChildByLocalName(parent, localName){
-    const nodes = parent.getElementsByTagName("*");
-    for(const el of nodes){
-      if((el.localName || el.nodeName) === localName) return el;
-    }
-    return null;
-  }
-
-  function textByLocalName(parent, localName){
-    const el = firstChildByLocalName(parent, localName);
-    return el ? (el.textContent || "").trim() : "";
-  }
-
-  function attrOfLocalName(parent, localName, attrName){
-    const el = firstChildByLocalName(parent, localName);
-    if(!el) return "";
-    const v = el.getAttribute(attrName);
-    return (v || "").trim();
-  }
-
-  function excelText(value){
-    // Excel anti-scientific-notation: prefix apostrophe
-    const s = cleanCellString(value);
-    if(!s) return "";
-    return "'" + s;
-  }
-
-  async function isdocToCsvCz(file){
-    const xmlText = await file.text();
-    const doc = new DOMParser().parseFromString(xmlText, "application/xml");
-    if(doc.getElementsByTagName("parsererror").length){
-      throw new Error("ISDOC není validní XML.");
-    }
-
-    const currency = textByLocalName(doc, "LocalCurrencyCode") || "CZK";
-
-    const lines = [];
-    const all = doc.getElementsByTagName("*");
-
-    for(const el of all){
-      const ln = el.localName || el.nodeName;
-      if(ln !== "InvoiceLine") continue;
-
-      const qty = textByLocalName(el, "InvoicedQuantity");
-      const unitCode = attrOfLocalName(el, "InvoicedQuantity", "unitCode"); // ks
-      const unitPrice = textByLocalName(el, "UnitPrice");
-
-      const vatPercent = textByLocalName(el, "Percent");
-      const base = textByLocalName(el, "LineExtensionAmount");
-      const vatAmount = textByLocalName(el, "LineExtensionTaxAmount");
-      const total = textByLocalName(el, "LineExtensionAmountTaxInclusive");
-
-      const itemEl = firstChildByLocalName(el, "Item");
-      const desc = itemEl ? textByLocalName(itemEl, "Description") : "";
-
-      const eanEl = itemEl ? firstChildByLocalName(itemEl, "CatalogueItemIdentification") : null;
-      const ean = eanEl ? textByLocalName(eanEl, "ID") : "";
-
-      const sellerEl = itemEl ? firstChildByLocalName(itemEl, "SellersItemIdentification") : null;
-      const sellerId = sellerEl ? textByLocalName(sellerEl, "ID") : "";
-
-      if(!cleanCellString(desc) && !cleanCellString(ean) && !cleanCellString(sellerId)) continue;
-
-      lines.push([
-        excelText(ean),                 // EAN as TEXT
-        excelText(sellerId),            // also keep as text
-        desc,
-        cleanCellString(qty),
-        unitCode || "",
-        cleanCellString(unitPrice),
-        cleanCellString(vatPercent),
-        cleanCellString(base),
-        cleanCellString(vatAmount),
-        cleanCellString(total)
-      ]);
-    }
-
-    if(!lines.length){
-      throw new Error("ISDOC: Nebyly nalezeny žádné položky (<InvoiceLine>).");
-    }
-
-    const header = [
-      "EAN",
-      "Kód zboží",
-      "Popis",
-      "Množství",
-      "MJ",
-      "Jedn. cena",
-      "Sazba DPH",
-      `Základ v ${currency}`,
-      `DPH v ${currency}`,
-      `Celkem v ${currency}`
-    ];
-
-    const out = [toDelimitedRow(header, ";")];
-    for(const r of lines) out.push(toDelimitedRow(r.map(cleanCellString), ";"));
-    return out.join("\n") + "\n";
-  }
-
-  async function readInputFileAsTextStandard(file){
+  async function readInputFileAsText(file){
     const ext = extOf(file.name);
     const cfg = VENDORS[ACTIVE_VENDOR];
 
@@ -993,63 +1003,46 @@
       return rowsToSimpleCsv(rows);
     }
 
-    throw new Error("Nepodporovaný typ souboru pro tento režim: " + ext);
+    if(ext === "isdoc"){
+      // ISDOC mode: přesná extrakce položek podle XML
+      return await readIsdocAsItemsCsv(file);
+    }
+
+    throw new Error("Nepodporovaný typ souboru: " + ext);
   }
 
-  runStandard.addEventListener("click", async () => {
-    const file = (fileStandard.files && fileStandard.files[0]) ? fileStandard.files[0] : null;
+  runBtn.addEventListener("click", async () => {
+    const file = (fileEl.files && fileEl.files[0]) ? fileEl.files[0] : null;
     if(!file) return;
+
+    const cfg = VENDORS[ACTIVE_VENDOR];
 
     const headN = Math.max(0, parseInt(headEl.value || "0", 10));
     const marker = (markerEl.value || "").trim();
 
     let text;
     try{
-      text = await readInputFileAsTextStandard(file);
+      text = await readInputFileAsText(file);
     }catch(e){
       msg.textContent = "Chyba: " + (e?.message || e);
       return;
     }
 
     const ext = extOf(file.name);
-    let cleaned = text;
 
-    if(ext === "csv"){
+    let cleaned;
+    if(cfg.mode === "isdoc"){
+      cleaned = text; // u ISDOC už je to finální CSV
+    } else if(ext === "csv"){
       cleaned = cleanCsvText(text, headN, marker);
-    }
-
-    const outName = (ext === "csv")
-      ? file.name
-      : file.name.replace(/\.[^.]+$/, "") + ".csv";
-
-    downloadCsvUtf8Bom(cleaned, outName);
-    msg.innerHTML = `Hotovo: <code>${outName}</code>`;
-  });
-
-  runIsdoc.addEventListener("click", async () => {
-    const file = (fileIsdoc.files && fileIsdoc.files[0]) ? fileIsdoc.files[0] : null;
-    if(!file) return;
-
-    if(extOf(file.name) !== "isdoc"){
-      msg.textContent = "Chyba: Vyberte prosím soubor .isdoc.";
-      return;
-    }
-
-    let csv;
-    try{
-      csv = await isdocToCsvCz(file);
-    }catch(e){
-      msg.textContent = "Chyba: " + (e?.message || e);
-      return;
+    } else {
+      cleaned = text;
     }
 
     const outName = file.name.replace(/\.[^.]+$/, "") + ".csv";
-    downloadCsvUtf8Bom(csv, outName);
+    downloadCsvUtf8Bom(cleaned, outName);
     msg.innerHTML = `Hotovo: <code>${outName}</code>`;
   });
-
-  // init
-  setVendor("LKQ");
 </script>
 </body>
 </html>
