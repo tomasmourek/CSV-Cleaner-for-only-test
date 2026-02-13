@@ -358,6 +358,32 @@
       padding:8px 12px;
       font-size:14px;
     }
+
+    /* ISDOC options */
+    .isdocBox{
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px;
+      display:grid;
+      gap:10px;
+    }
+    .isdocGrid{
+      display:grid;
+      gap:10px;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width:860px){
+      .isdocGrid{ grid-template-columns: 1fr 1fr; }
+    }
+    .checkRow{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:12px;
+    }
+    .checkRow input{ margin-top:3px; }
   </style>
 </head>
 
@@ -446,6 +472,49 @@
       <button id="run" disabled>Promazat a stáhnout</button>
     </div>
 
+    <!-- ISDOC options (shown only for ISDOC vendor) -->
+    <div id="isdocOptions" class="isdocBox hidden" style="margin-top:12px;">
+      <div><b>ISDOC výstup</b> (věrně podle XML tagů)</div>
+
+      <div class="isdocGrid">
+        <div class="checkRow">
+          <input id="isdocHeadersCz" type="checkbox">
+          <div>
+            <b>Přeložit hlavičky do češtiny</b><br>
+            <small>Jinak zůstane názvosloví v EN (podle tagů).</small>
+          </div>
+        </div>
+
+        <div class="checkRow">
+          <input id="isdocIncludeDocMeta" type="checkbox" checked>
+          <div>
+            <b>Zahrnout metadatové sloupce dokladu</b><br>
+            <small>ID, IssueDate, Currency, Note, Supplier/Customer…</small>
+          </div>
+        </div>
+
+        <div class="checkRow">
+          <input id="isdocIncludePayment" type="checkbox">
+          <div>
+            <b>Zahrnout PaymentMeans</b><br>
+            <small>IBAN, VS, due date… (pokud existuje)</small>
+          </div>
+        </div>
+
+        <div class="checkRow">
+          <input id="isdocNumbersEn" type="checkbox">
+          <div>
+            <b>EN formát čísel</b><br>
+            <small>Tečka jako desetinný oddělovač (jinak čárka).</small>
+          </div>
+        </div>
+      </div>
+
+      <small>
+        ISDOC detekce je striktní: musí to být <code>Invoice</code> s ISDOC namespace (např. <code>http://isdoc.cz/namespace/2013</code>).
+      </small>
+    </div>
+
     <div class="meta">
       <small>
         Nástroj je určen pro <b>dodací listy / faktury vybraného dodavatele</b>.
@@ -470,7 +539,7 @@
       <div id="msg" class="ok"></div>
 
       <div class="footer">
-        CSV Cleaner · verze 1.6 · 2026 · vytvořeno uživateli pro uživatele
+        CSV Cleaner · verze 1.7 · 2026 · vytvořeno uživateli pro uživatele
       </div>
     </div>
   </div>
@@ -525,6 +594,12 @@
   const vendorNameEl = document.getElementById("vendorName");
   const vendorMiniLogo = document.getElementById("vendorMiniLogo");
   const vendorMiniFallback = document.getElementById("vendorMiniFallback");
+
+  const isdocOptionsBox = document.getElementById("isdocOptions");
+  const isdocHeadersCz = document.getElementById("isdocHeadersCz");
+  const isdocIncludeDocMeta = document.getElementById("isdocIncludeDocMeta");
+  const isdocIncludePayment = document.getElementById("isdocIncludePayment");
+  const isdocNumbersEn = document.getElementById("isdocNumbersEn");
 
   // ===== APP ELEMENTS =====
   const fileEl = document.getElementById("file");
@@ -584,6 +659,14 @@
     headEl.value = String(cfg.head);
     markerEl.value = cfg.marker;
 
+    // show/hide ISDOC options depending on vendor
+    if(v === "CARTEC"){
+      // Cartec can include ISDOC too (file type based), but UI stays same
+      isdocOptionsBox.classList.add("hidden");
+    }else{
+      isdocOptionsBox.classList.add("hidden");
+    }
+
     fileEl.value = "";
     runBtn.disabled = true;
     msg.textContent = "";
@@ -600,6 +683,7 @@
     msg.textContent = "";
     fileEl.value = "";
     runBtn.disabled = true;
+    isdocOptionsBox.classList.add("hidden");
   }
 
   btnLKQ.addEventListener("click", () => { setVendor("LKQ"); showApp(); });
@@ -691,18 +775,13 @@
     { key:"amount",    label:"Částka"    },
   ];
 
-  // ✅ OPRAVA: přidána "slevy" + kmen "slev" (kvůli "% slevy" vs "% sleva")
   const CARTEC_SYNONYMS = {
     number:    ["cislo","item number","item no","number","code","part number","part no","article","artikl","produkt","product code"],
     desc:      ["popis","nazev","polozka","item","description","desc","product","goods","name"],
     qty:       ["mnoz","mnozstvi","qty","quantity","count","pcs","pieces"],
     mj:        ["mj","merna jednotka","unit","uom","unit of measure","measure unit"],
     unitprice: ["jedn cena","jednotkova cena","unit price","unitprice","price per unit","price"],
-    discount:  [
-      "sleva","slevy","slev",                 /* ✅ tady */
-      "% sleva","% slevy","percent sleva","percent slevy",
-      "discount","disc","rebate","% discount"
-    ],
+    discount:  ["sleva","slevy","slev","% sleva","% slevy","discount","disc","rebate","% discount"],
     vat:       ["dph","dph percent","vat","vat percent","tax","tax percent","vat rate"],
     amount:    ["castka","celkem","total","line total","amount","sum","line amount","price total"]
   };
@@ -806,44 +885,6 @@
     return out.join("\n") + "\n";
   }
 
-  // ===== ISDOC (basic) =====
-  function getTextByLocalName(parent, localName){
-    const all = parent.getElementsByTagName("*");
-    for(const el of all){
-      if((el.localName || el.nodeName) === localName) return (el.textContent || "").trim();
-    }
-    return "";
-  }
-
-  async function readIsdocAsCzCsv(file){
-    const xmlText = await file.text();
-    const doc = new DOMParser().parseFromString(xmlText, "application/xml");
-    if(doc.getElementsByTagName("parsererror").length){
-      throw new Error("ISDOC není validní XML.");
-    }
-
-    const invoiceNumber = getTextByLocalName(doc, "ID") || getTextByLocalName(doc, "InvoiceNumber");
-    const issueDate     = getTextByLocalName(doc, "IssueDate");
-
-    const lines = [];
-    const nodes = doc.getElementsByTagName("*");
-    for(const el of nodes){
-      const ln = el.localName || el.nodeName;
-      if(ln === "InvoiceLine" || ln === "InvoiceItem"){
-        const desc  = getTextByLocalName(el, "ItemDescription") || getTextByLocalName(el, "Description");
-        const qty   = getTextByLocalName(el, "InvoicedQuantity") || getTextByLocalName(el, "Quantity");
-        const price = getTextByLocalName(el, "UnitPrice") || getTextByLocalName(el, "Price");
-        const total = getTextByLocalName(el, "LineExtensionAmount") || getTextByLocalName(el, "LineTotal") || getTextByLocalName(el, "Total");
-        lines.push([invoiceNumber, issueDate, desc, qty, price, total]);
-      }
-    }
-
-    const header = ["InvoiceNumber","IssueDate","Description","Quantity","UnitPrice","LineTotal"];
-    const out = [toDelimitedRow(header, ";")];
-    for(const r of lines) out.push(toDelimitedRow(r.map(cleanCellString), ";"));
-    return out.join("\n") + "\n";
-  }
-
   // ===== CSV cleaning =====
   function parseMarkerList(markerText){
     return (markerText || "")
@@ -869,9 +910,348 @@
     return lines.join("\n") + "\n";
   }
 
+  // ===== ISDOC (strict, namespace-aware, faithful to XML tags) =====
+  function isIsdocDocument(xmlDoc){
+    const root = xmlDoc.documentElement;
+    if(!root) return false;
+    const local = root.localName || root.nodeName;
+    const ns = root.namespaceURI || "";
+    if(local !== "Invoice") return false;
+    // accept isdoc.cz namespace variants
+    return ns.includes("isdoc.cz/namespace");
+  }
+
+  function firstElNS(parent, localName){
+    if(!parent) return null;
+    return parent.getElementsByTagNameNS("*", localName)[0] || null;
+  }
+
+  function firstTextNS(parent, localName){
+    const el = firstElNS(parent, localName);
+    return el ? (el.textContent || "").trim() : "";
+  }
+
+  function attrOrEmpty(el, attrName){
+    if(!el) return "";
+    return (el.getAttribute(attrName) || "").trim();
+  }
+
+  function numToLocale(n, useEn){
+    if(n === "" || n === null || typeof n === "undefined") return "";
+    const s = String(n).trim();
+    // keep as-is if not a number-like
+    const x = Number(s.replace(",", "."));
+    if(!Number.isFinite(x)) return s;
+    const hasDecimals = Math.abs(x % 1) > 0;
+    const out = hasDecimals ? x.toFixed(2) : String(x);
+    return useEn ? out : out.replace(".", ",");
+  }
+
+  // EN headers = faithful tags / meaning
+  const ISDOC_HEADERS_EN = [
+    "DocumentType",
+    "ID",
+    "UUID",
+    "IssuingSystem",
+    "IssueDate",
+    "TaxPointDate",
+    "VATApplicable",
+    "Note",
+    "LocalCurrencyCode",
+    "AccountingSupplierParty_Name",
+    "AccountingSupplierParty_ID",
+    "AccountingCustomerParty_Name",
+    "AccountingCustomerParty_ID",
+
+    "InvoiceLine_ID",
+    "InvoicedQuantity",
+    "InvoicedQuantity_unitCode",
+    "LineExtensionAmount",
+    "LineExtensionAmountTaxInclusive",
+    "LineExtensionTaxAmount",
+    "UnitPrice",
+    "UnitPriceTaxInclusive",
+    "ClassifiedTaxCategory_Percent",
+    "InvoiceLine_Note",
+    "Item_Description",
+    "CatalogueItemIdentification_ID",
+    "SellersItemIdentification_ID"
+  ];
+
+  const ISDOC_HEADERS_CZ = {
+    DocumentType: "Typ dokladu",
+    ID: "Číslo dokladu",
+    UUID: "UUID",
+    IssuingSystem: "Vystavovací systém",
+    IssueDate: "Datum vystavení",
+    TaxPointDate: "Datum zdanitelného plnění",
+    VATApplicable: "DPH použitelné",
+    Note: "Poznámka",
+    LocalCurrencyCode: "Měna",
+
+    AccountingSupplierParty_Name: "Dodavatel – název",
+    AccountingSupplierParty_ID: "Dodavatel – IČ",
+    AccountingCustomerParty_Name: "Odběratel – název",
+    AccountingCustomerParty_ID: "Odběratel – IČ",
+
+    InvoiceLine_ID: "Položka – ID",
+    InvoicedQuantity: "Množství",
+    InvoicedQuantity_unitCode: "MJ",
+    LineExtensionAmount: "Základ (bez DPH)",
+    LineExtensionAmountTaxInclusive: "Celkem (s DPH)",
+    LineExtensionTaxAmount: "DPH částka",
+    UnitPrice: "Jedn. cena (bez DPH)",
+    UnitPriceTaxInclusive: "Jedn. cena (s DPH)",
+    ClassifiedTaxCategory_Percent: "DPH %",
+    InvoiceLine_Note: "Položka – poznámka",
+    Item_Description: "Položka – popis",
+    CatalogueItemIdentification_ID: "EAN",
+    SellersItemIdentification_ID: "Kód dodavatele"
+  };
+
+  function buildIsdocHeaderRow(useCz, includeDocMeta, includePayment){
+    // payment not in base header list – we add only if includePayment enabled
+    const base = [...ISDOC_HEADERS_EN];
+
+    if(!includeDocMeta){
+      // remove doc meta + supplier/customer
+      const drop = new Set([
+        "DocumentType","ID","UUID","IssuingSystem","IssueDate","TaxPointDate","VATApplicable","Note","LocalCurrencyCode",
+        "AccountingSupplierParty_Name","AccountingSupplierParty_ID",
+        "AccountingCustomerParty_Name","AccountingCustomerParty_ID"
+      ]);
+      for(let i = base.length-1; i >= 0; i--){
+        if(drop.has(base[i])) base.splice(i,1);
+      }
+    }
+
+    if(includePayment){
+      base.push(
+        "PaymentDueDate",
+        "Payment_ID",
+        "BankCode",
+        "BankName",
+        "IBAN",
+        "BIC",
+        "VariableSymbol",
+        "ConstantSymbol"
+      );
+      if(useCz){
+        ISDOC_HEADERS_CZ.PaymentDueDate = "Splatnost";
+        ISDOC_HEADERS_CZ.Payment_ID = "Číslo účtu / ID platby";
+        ISDOC_HEADERS_CZ.BankCode = "Kód banky";
+        ISDOC_HEADERS_CZ.BankName = "Banka";
+        ISDOC_HEADERS_CZ.IBAN = "IBAN";
+        ISDOC_HEADERS_CZ.BIC = "BIC";
+        ISDOC_HEADERS_CZ.VariableSymbol = "Variabilní symbol";
+        ISDOC_HEADERS_CZ.ConstantSymbol = "Konstantní symbol";
+      }
+    }
+
+    return base.map(h => useCz ? (ISDOC_HEADERS_CZ[h] || h) : h);
+  }
+
+  function parseIsdocToCsvText(fileText, opts){
+    const xmlDoc = new DOMParser().parseFromString(fileText, "application/xml");
+
+    if(xmlDoc.getElementsByTagName("parsererror").length){
+      throw new Error("Soubor není validní XML.");
+    }
+    if(!isIsdocDocument(xmlDoc)){
+      throw new Error("Soubor není ISDOC. Očekávám root <Invoice> s ISDOC namespace (např. http://isdoc.cz/namespace/2013).");
+    }
+
+    const inv = xmlDoc.documentElement;
+
+    // doc meta
+    const docType = firstTextNS(inv, "DocumentType");
+    const id = firstTextNS(inv, "ID");
+    const uuid = firstTextNS(inv, "UUID");
+    const issuingSystem = firstTextNS(inv, "IssuingSystem");
+    const issueDate = firstTextNS(inv, "IssueDate");
+    const taxPointDate = firstTextNS(inv, "TaxPointDate");
+    const vatApplicable = firstTextNS(inv, "VATApplicable");
+    const note = firstTextNS(inv, "Note");
+    const currency = firstTextNS(inv, "LocalCurrencyCode");
+
+    // parties
+    let supplierName = "", supplierId = "", customerName = "", customerId = "";
+    const asp = firstElNS(inv, "AccountingSupplierParty");
+    if(asp){
+      const party = firstElNS(asp, "Party");
+      if(party){
+        const pid = firstElNS(party, "PartyIdentification");
+        if(pid) supplierId = firstTextNS(pid, "ID");
+        const pn = firstElNS(party, "PartyName");
+        if(pn) supplierName = firstTextNS(pn, "Name");
+      }
+    }
+
+    const acp = firstElNS(inv, "AccountingCustomerParty");
+    if(acp){
+      const party = firstElNS(acp, "Party");
+      if(party){
+        const pid = firstElNS(party, "PartyIdentification");
+        if(pid) customerId = firstTextNS(pid, "ID");
+        const pn = firstElNS(party, "PartyName");
+        if(pn) customerName = firstTextNS(pn, "Name");
+      }
+    }
+
+    // payment
+    let payDueDate="", payId="", bankCode="", bankName="", iban="", bic="", vs="", ks="";
+    if(opts.includePayment){
+      const pm = firstElNS(inv, "PaymentMeans");
+      if(pm){
+        const payment = firstElNS(pm, "Payment");
+        if(payment){
+          const details = firstElNS(payment, "Details");
+          if(details){
+            payDueDate = firstTextNS(details, "PaymentDueDate");
+            payId = firstTextNS(details, "ID");
+            bankCode = firstTextNS(details, "BankCode");
+            bankName = firstTextNS(details, "Name");
+            iban = firstTextNS(details, "IBAN");
+            bic = firstTextNS(details, "BIC");
+            vs = firstTextNS(details, "VariableSymbol");
+            ks = firstTextNS(details, "ConstantSymbol");
+          }
+        }
+      }
+    }
+
+    // lines
+    const linesContainer = firstElNS(inv, "InvoiceLines");
+    const lineEls = linesContainer ? Array.from(linesContainer.getElementsByTagNameNS("*", "InvoiceLine")) : [];
+
+    const headers = buildIsdocHeaderRow(opts.headersCz, opts.includeDocMeta, opts.includePayment);
+    const outRows = [];
+    outRows.push(toDelimitedRow(headers, ";"));
+
+    // Build selected header keys in same order as printed header
+    // (we need keys, not labels)
+    const keys = [];
+    {
+      // rebuild base EN keys list with same filtering rules
+      let base = [...ISDOC_HEADERS_EN];
+      if(!opts.includeDocMeta){
+        const drop = new Set([
+          "DocumentType","ID","UUID","IssuingSystem","IssueDate","TaxPointDate","VATApplicable","Note","LocalCurrencyCode",
+          "AccountingSupplierParty_Name","AccountingSupplierParty_ID",
+          "AccountingCustomerParty_Name","AccountingCustomerParty_ID"
+        ]);
+        base = base.filter(x => !drop.has(x));
+      }
+      if(opts.includePayment){
+        base = base.concat([
+          "PaymentDueDate","Payment_ID","BankCode","BankName","IBAN","BIC","VariableSymbol","ConstantSymbol"
+        ]);
+      }
+      keys.push(...base);
+    }
+
+    for(const il of lineEls){
+      const ilId = firstTextNS(il, "ID");
+
+      const qtyEl = firstElNS(il, "InvoicedQuantity");
+      const qty = qtyEl ? (qtyEl.textContent || "").trim() : "";
+      const unitCode = qtyEl ? attrOrEmpty(qtyEl, "unitCode") : "";
+
+      const lineExt = firstTextNS(il, "LineExtensionAmount");
+      const lineExtIncl = firstTextNS(il, "LineExtensionAmountTaxInclusive");
+      const lineTax = firstTextNS(il, "LineExtensionTaxAmount");
+
+      const unitPrice = firstTextNS(il, "UnitPrice");
+      const unitPriceIncl = firstTextNS(il, "UnitPriceTaxInclusive");
+
+      let vatPct = "";
+      const ctc = firstElNS(il, "ClassifiedTaxCategory");
+      if(ctc) vatPct = firstTextNS(ctc, "Percent");
+
+      const ilNote = firstTextNS(il, "Note");
+
+      let itemDesc="", ean="", sellerCode="";
+      const item = firstElNS(il, "Item");
+      if(item){
+        itemDesc = firstTextNS(item, "Description");
+
+        const cat = firstElNS(item, "CatalogueItemIdentification");
+        if(cat) ean = firstTextNS(cat, "ID");
+
+        const sel = firstElNS(item, "SellersItemIdentification");
+        if(sel) sellerCode = firstTextNS(sel, "ID");
+      }
+
+      // Prepare a full record dict of all possible fields
+      const rec = {
+        DocumentType: docType,
+        ID: id,
+        UUID: uuid,
+        IssuingSystem: issuingSystem,
+        IssueDate: issueDate,
+        TaxPointDate: taxPointDate,
+        VATApplicable: vatApplicable,
+        Note: note,
+        LocalCurrencyCode: currency,
+
+        AccountingSupplierParty_Name: supplierName,
+        AccountingSupplierParty_ID: supplierId,
+        AccountingCustomerParty_Name: customerName,
+        AccountingCustomerParty_ID: customerId,
+
+        InvoiceLine_ID: ilId,
+        InvoicedQuantity: qty,
+        InvoicedQuantity_unitCode: unitCode,
+        LineExtensionAmount: lineExt,
+        LineExtensionAmountTaxInclusive: lineExtIncl,
+        LineExtensionTaxAmount: lineTax,
+        UnitPrice: unitPrice,
+        UnitPriceTaxInclusive: unitPriceIncl,
+        ClassifiedTaxCategory_Percent: vatPct,
+        InvoiceLine_Note: ilNote,
+        Item_Description: itemDesc,
+        CatalogueItemIdentification_ID: ean,
+        SellersItemIdentification_ID: sellerCode,
+
+        PaymentDueDate: payDueDate,
+        Payment_ID: payId,
+        BankCode: bankCode,
+        BankName: bankName,
+        IBAN: iban,
+        BIC: bic,
+        VariableSymbol: vs,
+        ConstantSymbol: ks
+      };
+
+      // output row in keys order
+      const row = keys.map(k => {
+        const v = rec[k] ?? "";
+        // numeric formatting for selected numeric fields
+        const numericKeys = new Set([
+          "InvoicedQuantity","LineExtensionAmount","LineExtensionAmountTaxInclusive","LineExtensionTaxAmount",
+          "UnitPrice","UnitPriceTaxInclusive","ClassifiedTaxCategory_Percent"
+        ]);
+        if(numericKeys.has(k)) return numToLocale(v, opts.numbersEn);
+        return cleanCellString(v);
+      });
+
+      outRows.push(toDelimitedRow(row, ";"));
+    }
+
+    if(outRows.length === 1){
+      throw new Error("ISDOC: nenalezeny žádné InvoiceLine položky.");
+    }
+
+    return outRows.join("\n") + "\n";
+  }
+
+  // ===== Input router =====
   async function readInputFileAsText(file){
     const ext = extOf(file.name);
     const cfg = VENDORS[ACTIVE_VENDOR];
+
+    // show ISDOC options only when file is .isdoc (or .xml but ISDOC)
+    isdocOptionsBox.classList.add("hidden");
 
     if(ext === "csv") return await file.text();
 
@@ -883,8 +1263,26 @@
       return rowsToSimpleCsv(rows);
     }
 
-    if(ext === "isdoc"){
-      return await readIsdocAsCzCsv(file);
+    if(ext === "isdoc" || ext === "xml"){
+      const xmlText = await file.text();
+      const xmlDoc = new DOMParser().parseFromString(xmlText, "application/xml");
+      if(xmlDoc.getElementsByTagName("parsererror").length){
+        throw new Error("Soubor není validní XML.");
+      }
+      if(!isIsdocDocument(xmlDoc)){
+        // strict: xml is not accepted unless ISDOC
+        throw new Error("Soubor .xml není ISDOC. Nahraj .isdoc nebo ISDOC XML (Invoice + isdoc namespace).");
+      }
+
+      // show ISDOC options now
+      isdocOptionsBox.classList.remove("hidden");
+
+      return parseIsdocToCsvText(xmlText, {
+        headersCz: isdocHeadersCz.checked,
+        includeDocMeta: isdocIncludeDocMeta.checked,
+        includePayment: isdocIncludePayment.checked,
+        numbersEn: isdocNumbersEn.checked
+      });
     }
 
     throw new Error("Nepodporovaný typ souboru: " + ext);
@@ -912,9 +1310,8 @@
     let cleaned;
     if(ext === "csv"){
       cleaned = cleanCsvText(text, headN, marker);
-    } else if((ext === "xlsx" || ext === "xls") && cfg?.excel_mode !== "cartec_map"){
-      cleaned = text;
     } else {
+      // Excel/ISDOC already produced final CSV text
       cleaned = text;
     }
 
